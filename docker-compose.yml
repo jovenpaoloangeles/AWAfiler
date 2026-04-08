@@ -1,0 +1,17 @@
+services:
+  awafiler:
+    build: .
+    ports:
+      - "3456:3000"
+    volumes:
+      - awafiler-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - PORT=3000
+      - DATABASE_PATH=/app/data/awafiler.db
+    restart: unless-stopped
+
+volumes:
+  awafiler-data:
