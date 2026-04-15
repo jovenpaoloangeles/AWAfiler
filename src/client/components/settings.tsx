@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Loader2, Save, Check, Info } from "lucide-react";
+import { Loader2, Save, Check, Info, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,11 @@ export function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [savingKey, setSavingKey] = useState(false);
+  const [savedKey, setSavedKey] = useState(false);
 
   useEffect(() => {
     api
@@ -25,6 +30,7 @@ export function Settings() {
         setDivision(profile.division);
         setApproverName(profile.approver_name ?? "");
         setApproverTitle(profile.approver_title ?? "");
+        setHasApiKey(profile.has_api_key ?? false);
       })
       .catch(() => {
         // Profile may not exist yet
@@ -145,23 +151,83 @@ export function Settings() {
           <h2 className="text-lg font-semibold">AI Configuration</h2>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ai-api-key">API Key</Label>
-            <Input
-              id="ai-api-key"
-              type="password"
-              value="••••••••••••••••"
-              disabled
-              placeholder="Set via environment variable"
-            />
+            <Label htmlFor="ai-api-key">Gemini API Key</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="ai-api-key"
+                  type={showApiKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={hasApiKey ? "Key is set — enter a new one to replace" : "Enter your Gemini API key"}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey((v) => !v)}
+                  className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showApiKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <Button
+                type="button"
+                disabled={savingKey || !apiKey.trim()}
+                onClick={async () => {
+                  setSavingKey(true);
+                  setSavedKey(false);
+                  try {
+                    const result = await api.setApiKey(apiKey.trim());
+                    setHasApiKey(result.has_api_key);
+                    setApiKey("");
+                    setSavedKey(true);
+                    setTimeout(() => setSavedKey(false), 2000);
+                  } finally {
+                    setSavingKey(false);
+                  }
+                }}
+              >
+                {savingKey ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : savedKey ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Save className="size-4" />
+                )}
+                {savingKey ? "Saving…" : savedKey ? "Saved" : "Save"}
+              </Button>
+              {hasApiKey && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={savingKey}
+                  onClick={async () => {
+                    setSavingKey(true);
+                    try {
+                      const result = await api.setApiKey(null);
+                      setHasApiKey(result.has_api_key);
+                      setApiKey("");
+                    } finally {
+                      setSavingKey(false);
+                    }
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              )}
+            </div>
             <div className="flex items-start gap-2 text-sm text-muted-foreground">
               <Info className="mt-0.5 size-4 shrink-0" />
               <p>
-                Set the Gemini API key via the{" "}
+                {hasApiKey
+                  ? "A Gemini API key is currently set. You can replace or remove it above."
+                  : "Enter your Gemini API key to enable AI features. The key is stored securely on the server."}{" "}
+                You can also set it via the{" "}
                 <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
                   GEMINI_API_KEY
                 </code>{" "}
-                environment variable. The API key is read from the server
-                environment and is not stored through this UI.
+                environment variable (takes priority).
               </p>
             </div>
           </div>

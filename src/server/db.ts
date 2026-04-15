@@ -46,6 +46,12 @@ export function migrate() {
     CREATE INDEX IF NOT EXISTS idx_entries_status ON entries(status);
   `);
 
+  // Add gemini_api_key column if not present (idempotent)
+  const cols = db.query("PRAGMA table_info(profile)").all() as { name: string }[];
+  if (!cols.some((c) => c.name === "gemini_api_key")) {
+    db.run("ALTER TABLE profile ADD COLUMN gemini_api_key TEXT DEFAULT NULL");
+  }
+
   // Seed profile row if empty
   const profile = db.query("SELECT id FROM profile LIMIT 1").get();
   if (!profile) {

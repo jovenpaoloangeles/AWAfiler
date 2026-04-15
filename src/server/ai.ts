@@ -101,10 +101,20 @@ function buildUserPrompt(mode: string, input: string): string {
   return template.replace("{input}", input);
 }
 
+function getApiKey(): string | null {
+  if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+  const row = db.query("SELECT gemini_api_key FROM profile WHERE id = 1").get() as { gemini_api_key: string | null } | null;
+  return row?.gemini_api_key ?? null;
+}
+
+export function hasApiKey(): boolean {
+  return !!getApiKey();
+}
+
 export async function* streamAI(request: { mode: string; input: string }): AsyncGenerator<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is not set");
+    throw new Error("Gemini API key is not configured. Set it in Settings or via the GEMINI_API_KEY environment variable.");
   }
 
   const ai = new GoogleGenAI({ apiKey });

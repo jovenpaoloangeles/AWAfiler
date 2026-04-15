@@ -34,6 +34,7 @@ export interface Profile {
   approver_name: string | null;
   approver_title: string | null;
   created_at: string;
+  has_api_key?: boolean;
 }
 
 export interface ContextDoc {
@@ -71,6 +72,8 @@ export const api = {
   getProfile: () => request<Profile>("/profile"),
   updateProfile: (data: Partial<Profile>) =>
     request<Profile>("/profile", { method: "PUT", body: JSON.stringify(data) }),
+  setApiKey: (key: string | null) =>
+    request<{ has_api_key: boolean }>("/profile/api-key", { method: "PUT", body: JSON.stringify({ gemini_api_key: key }) }),
   getContextDocs: () => request<ContextDoc[]>("/context-docs"),
   uploadContextDoc: (formData: FormData) =>
     fetch(`${API_BASE}/context-docs`, { method: "POST", body: formData }).then((r) => {

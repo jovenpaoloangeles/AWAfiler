@@ -1,4 +1,4 @@
-import { streamAI } from "../ai";
+import { streamAI, hasApiKey } from "../ai";
 
 const VALID_MODES = new Set(["revise", "expand", "generate", "generate-assignment", "expand-assignment"]);
 
@@ -10,9 +10,9 @@ export async function aiRoutes(req: Request, pathname: string): Promise<Response
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  // Check for API key
-  if (!process.env.GEMINI_API_KEY) {
-    return Response.json({ error: "GEMINI_API_KEY environment variable is not set" }, { status: 500 });
+  // Check for API key (env var or DB)
+  if (!hasApiKey()) {
+    return Response.json({ error: "Gemini API key is not configured. Set it in Settings or via the GEMINI_API_KEY environment variable." }, { status: 500 });
   }
 
   // Extract mode from pathname: /api/ai/revise, /api/ai/expand, /api/ai/generate

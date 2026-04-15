@@ -2,7 +2,6 @@ import { NavLink } from "react-router-dom";
 import {
   CalendarDays,
   Table2,
-  Sparkles,
   BookOpen,
   Settings,
   FileText,
@@ -15,7 +14,6 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", label: "Calendar", icon: CalendarDays },
   { to: "/table", label: "Table View", icon: Table2 },
-  { to: "/ai", label: "AI Assist", icon: Sparkles },
   { to: "/context", label: "Context Library", icon: BookOpen },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
@@ -51,12 +49,10 @@ export function Sidebar({ onGeneratePdf }: { onGeneratePdf?: () => void }) {
             {item.label}
           </NavLink>
         ))}
-      </nav>
 
-      <Separator />
+        <Separator className="my-1" />
 
-      {/* Generate PDF */}
-      <div className="px-2 py-2">
+        {/* Generate PDF */}
         <button
           onClick={onGeneratePdf}
           className={cn(
@@ -67,7 +63,7 @@ export function Sidebar({ onGeneratePdf }: { onGeneratePdf?: () => void }) {
           <FileDown className="h-4 w-4" />
           Generate PDF
         </button>
-      </div>
+      </nav>
 
       <Separator />
 
