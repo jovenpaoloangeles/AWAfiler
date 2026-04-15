@@ -19,6 +19,30 @@ const SYSTEM_PROMPT_TEMPLATE = `You are an AI writing assistant for AWAfiler, a 
 - Use action verbs and measurable outcomes where possible.
 - Keep accomplishments concise but descriptive.
 - Match the writing style of the user's recent entries.
+
+## Development Pacing Rules
+When generating work entries, each entry represents exactly ONE work day of effort. Development work must follow a natural, gradual progression through these phases:
+
+1. Requirements gathering / planning
+2. Environment setup / configuration
+3. Development / implementation (may span multiple days)
+4. Code review / refinement
+5. Testing (unit testing, integration testing, user acceptance testing)
+6. Bug fixes and adjustments (may span multiple days)
+7. Deployment / rollout
+8. Documentation / handover
+
+CRITICAL: Never skip phases. Do not jump from "testing" on one day to "deployment" the next. Each day's accomplishment should be a logical continuation of the previous day's work. A realistic project takes weeks — not days. Spread work across multiple entries per phase when appropriate.
+
+## Style Matching
+Analyze the user's recent entries (provided above) and match their writing style:
+- Sentence structure (short concise sentences vs. longer descriptive ones)
+- Level of detail (brief summaries vs. thorough descriptions)
+- Technical depth (heavy jargon vs. accessible language)
+- Common phrases, formatting patterns, and recurring vocabulary
+- Tone balance (formal vs. approachable)
+
+Generated entries should be indistinguishable from the user's own writing.
 `;
 
 const USER_PROMPTS: Record<string, string> = {
@@ -38,13 +62,15 @@ Brief note:
 
 If both fields are empty, infer from recent work patterns. Output ONLY the accomplishment text — no intro, no explanations.`,
 
-  "generate-assignment": `Generate a concise work assignment title and brief description based on the user's role, recent work, and context documents. The assignment should be realistic and relevant.
+  "generate-assignment": `Generate a realistic work entry for the user based on their role, recent work, and context documents.
 
 Look at the user's recent entries to understand their ongoing projects and suggest a logical next task.
 
-Format as:
-Title: [brief title]
-Description: [1-2 sentence description of expected outputs]
+Format your response EXACTLY as:
+Title: [brief work assignment title]
+Description: [1-2 sentences in third person past tense describing what was accomplished]
+
+The Description should read like an accomplishment statement — what the person did/completed, not what they plan to do. Match the writing style of their recent entries.
 
 Context:
 {input}`,
