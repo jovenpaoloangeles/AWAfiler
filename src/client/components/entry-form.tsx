@@ -16,8 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEntryMutations } from "@/hooks/use-entries";
 import type { Entry } from "@/lib/api";
 import { AIAssistButton } from "@/components/ai-assist-button";
-import { AIGenerateButton } from "@/components/ai-generate-button";
-import { AIGenerateAssignmentButton } from "@/components/ai-generate-assignment-button";
+import { AIGenerateContextButton } from "@/components/ai-generate-context-button";
 
 interface EntryFormProps {
   open: boolean;
@@ -31,10 +30,8 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
   const formRef = useRef<HTMLFormElement>(null);
 
   const [date, setDate] = useState("");
-  const [expectedOutput, setExpectedOutput] = useState("");
   const [workAssignment, setWorkAssignment] = useState("");
   const [accomplishments, setAccomplishments] = useState("");
-  const [durationDays, setDurationDays] = useState(1);
   const [status, setStatus] = useState<Entry["status"]>("draft");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,17 +40,13 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
   useEffect(() => {
     if (entry) {
       setDate(entry.date);
-      setExpectedOutput(entry.expected_output);
       setWorkAssignment(entry.work_assignment);
       setAccomplishments(entry.accomplishments);
-      setDurationDays(entry.duration_days);
       setStatus(entry.status);
     } else {
       setDate(defaultDate ?? "");
-      setExpectedOutput("");
       setWorkAssignment("");
       setAccomplishments("");
-      setDurationDays(1);
       setStatus("draft");
     }
   }, [entry, defaultDate, open]);
@@ -65,10 +58,10 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
     try {
       const data = {
         date,
-        expected_output: expectedOutput,
+        expected_output: accomplishments,
         work_assignment: workAssignment,
         accomplishments,
-        duration_days: durationDays,
+        duration_days: 1,
         status,
       };
       if (entry) {
@@ -115,18 +108,6 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
             />
           </div>
 
-          {/* Expected Output */}
-          <div className="space-y-1.5">
-            <Label htmlFor="entry-expected">Expected Output</Label>
-            <Textarea
-              id="entry-expected"
-              value={expectedOutput}
-              onChange={(e) => setExpectedOutput(e.target.value)}
-              placeholder="What do you expect to accomplish?"
-              rows={3}
-            />
-          </div>
-
           {/* Work Assignment */}
           <div className="space-y-1.5">
             <Label htmlFor="entry-work">Work Assignment</Label>
@@ -142,14 +123,17 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
               value={workAssignment}
               onAccept={(text) => setWorkAssignment(text)}
             />
-            <AIGenerateAssignmentButton
-              onAccept={(text) => setWorkAssignment(text)}
+            <AIGenerateContextButton
+              onAccept={(wa, acc) => {
+                setWorkAssignment(wa);
+                setAccomplishments(acc);
+              }}
             />
           </div>
 
-          {/* Accomplishments */}
+          {/* Accomplishments / Expected Output */}
           <div className="space-y-1.5">
-            <Label htmlFor="entry-accomplishments">Accomplishments</Label>
+            <Label htmlFor="entry-accomplishments">Accomplishment / Expected Output</Label>
             <Textarea
               id="entry-accomplishments"
               value={accomplishments}
@@ -161,23 +145,6 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
               mode="revise"
               value={accomplishments}
               onAccept={(text) => setAccomplishments(text)}
-            />
-            <AIGenerateButton
-              workAssignment={workAssignment}
-              expectedOutput={expectedOutput}
-              onAccept={(text) => setAccomplishments(text)}
-            />
-          </div>
-
-          {/* Duration in Days */}
-          <div className="space-y-1.5">
-            <Label htmlFor="entry-duration">Duration (days)</Label>
-            <Input
-              id="entry-duration"
-              type="number"
-              min={1}
-              value={durationDays}
-              onChange={(e) => setDurationDays(Math.max(1, Number(e.target.value)))}
             />
           </div>
 
