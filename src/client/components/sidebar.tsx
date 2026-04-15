@@ -6,6 +6,7 @@ import {
   Settings,
   FileText,
   FileDown,
+  FileSpreadsheet,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Separator } from "@/components/ui/separator";
@@ -18,7 +19,13 @@ const navItems = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar({ onGeneratePdf }: { onGeneratePdf?: () => void }) {
+export function Sidebar({
+  onGeneratePdf,
+  onExportExcel,
+}: {
+  onGeneratePdf?: () => void;
+  onExportExcel?: () => void;
+}) {
   return (
     <aside className="flex h-screen w-56 flex-col border-r border-border bg-background">
       {/* Brand */}
@@ -62,6 +69,17 @@ export function Sidebar({ onGeneratePdf }: { onGeneratePdf?: () => void }) {
         >
           <FileDown className="h-4 w-4" />
           Generate PDF
+        </button>
+        {/* Export Excel */}
+        <button
+          onClick={onExportExcel}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+          Export Excel
         </button>
       </nav>
 
