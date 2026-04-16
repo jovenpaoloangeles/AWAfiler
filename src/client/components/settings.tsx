@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { api, type Profile } from "@/lib/api";
+import { api } from "@/lib/api";
 
 export function Settings() {
   const [name, setName] = useState("");
@@ -22,28 +22,22 @@ export function Settings() {
   const [savedKey, setSavedKey] = useState(false);
 
   useEffect(() => {
-    api
-      .getProfile()
-      .then((profile: Profile) => {
-        setName(profile.name);
-        setPosition(profile.position);
-        setDivision(profile.division);
-        setApproverName(profile.approver_name ?? "");
-        setApproverTitle(profile.approver_title ?? "");
-        setHasApiKey(profile.has_api_key ?? false);
-      })
-      .catch(() => {
-        // Profile may not exist yet
-      })
-      .finally(() => setLoading(false));
+    const profile = api.getProfile();
+    setName(profile.name);
+    setPosition(profile.position);
+    setDivision(profile.division);
+    setApproverName(profile.approver_name ?? "");
+    setApproverTitle(profile.approver_title ?? "");
+    setHasApiKey(profile.has_api_key ?? false);
+    setLoading(false);
   }, []);
 
-  const handleSave = async (e: FormEvent) => {
+  const handleSave = (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setSaved(false);
     try {
-      await api.updateProfile({
+      api.updateProfile({
         name,
         position,
         division,
@@ -174,11 +168,11 @@ export function Settings() {
               <Button
                 type="button"
                 disabled={savingKey || !apiKey.trim()}
-                onClick={async () => {
+                onClick={() => {
                   setSavingKey(true);
                   setSavedKey(false);
                   try {
-                    const result = await api.setApiKey(apiKey.trim());
+                    const result = api.setApiKey(apiKey.trim());
                     setHasApiKey(result.has_api_key);
                     setApiKey("");
                     setSavedKey(true);
@@ -202,10 +196,10 @@ export function Settings() {
                   type="button"
                   variant="outline"
                   disabled={savingKey}
-                  onClick={async () => {
+                  onClick={() => {
                     setSavingKey(true);
                     try {
-                      const result = await api.setApiKey(null);
+                      const result = api.setApiKey(null);
                       setHasApiKey(result.has_api_key);
                       setApiKey("");
                     } finally {
