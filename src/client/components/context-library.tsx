@@ -42,19 +42,18 @@ export function ContextLibrary() {
 
       setUploading(true);
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("title", file.name);
-        formData.append("type", docType);
-
-        const newDoc = await api.uploadContextDoc(formData);
+        const content = await file.text();
+        const newDoc = api.uploadContextDoc({
+          title: file.name,
+          content,
+          type: docType,
+        });
         setDocs((prev) => [newDoc, ...prev]);
         toast.success(`Uploaded ${file.name}`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to upload document");
       } finally {
         setUploading(false);
-        // Reset file input so the same file can be re-uploaded
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -118,7 +117,7 @@ export function ContextLibrary() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".txt,.md,.pdf"
+          accept=".txt,.md"
           className="hidden"
           onChange={handleUpload}
         />
