@@ -7,6 +7,8 @@ import {
   FileText,
   FileDown,
   FileSpreadsheet,
+  HardDriveDownload,
+  HardDriveUpload,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Separator } from "@/components/ui/separator";
@@ -22,9 +24,13 @@ const navItems = [
 export function Sidebar({
   onGeneratePdf,
   onExportExcel,
+  onBackupData,
+  onRestoreData,
 }: {
   onGeneratePdf?: () => void;
   onExportExcel?: () => void;
+  onBackupData?: () => void;
+  onRestoreData?: () => void;
 }) {
   return (
     <aside className="flex h-screen w-56 flex-col border-r border-border bg-background">
@@ -80,6 +86,28 @@ export function Sidebar({
         >
           <FileSpreadsheet className="h-4 w-4" />
           Export Excel
+        </button>
+        {/* Backup Data */}
+        <button
+          onClick={onBackupData}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <HardDriveDownload className="h-4 w-4" />
+          Backup Data
+        </button>
+        {/* Restore Data */}
+        <button
+          onClick={onRestoreData}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <HardDriveUpload className="h-4 w-4" />
+          Restore Data
         </button>
       </nav>
 
