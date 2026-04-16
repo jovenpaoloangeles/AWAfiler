@@ -222,12 +222,7 @@ export function Settings() {
               <p>
                 {hasApiKey
                   ? "A Gemini API key is currently set. You can replace or remove it above."
-                  : "Enter your Gemini API key to enable AI features. The key is stored securely on the server."}{" "}
-                You can also set it via the{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
-                  GEMINI_API_KEY
-                </code>{" "}
-                environment variable (takes priority).
+                  : "Enter your Gemini API key to enable AI features. The key is stored in your browser's local storage."}{" "}
               </p>
             </div>
           </div>
