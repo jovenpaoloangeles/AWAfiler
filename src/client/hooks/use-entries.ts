@@ -1,58 +1,46 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { api, type Entry, type EntriesParams } from "@/lib/api";
 
 export function useEntries(params?: EntriesParams) {
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
 
-  // Serialize params to a stable key for dependency tracking
-  const paramsKey = JSON.stringify(params ?? {});
+  const entries = useMemo(() => {
+    // Trigger re-read by depending on revision
+    void revision;
+    return api.getEntries(params);
+  }, [params, revision]);
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.getEntries(params);
-      setEntries(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch entries");
-    } finally {
-      setLoading(false);
-    }
-  }, [paramsKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
+  const refetch = useCallback(() => {
+    setRevision((r) => r + 1);
+  }, []);
 
   const createEntry = useCallback(
-    async (data: Partial<Entry>) => {
-      const entry = await api.createEntry(data);
-      setEntries((prev) => [entry, ...prev]);
+    (data: Partial<Entry>) => {
+      const entry = api.createEntry(data);
+      setRevision((r) => r + 1);
       return entry;
     },
     []
   );
 
   const updateEntry = useCallback(
-    async (id: string, data: Partial<Entry>) => {
-      const entry = await api.updateEntry(id, data);
-      setEntries((prev) => prev.map((e) => (e.id === id ? entry : e)));
+    (id: string, data: Partial<Entry>) => {
+      const entry = api.updateEntry(id, data);
+      setRevision((r) => r + 1);
       return entry;
     },
     []
   );
 
-  const deleteEntry = useCallback(async (id: string) => {
-    await api.deleteEntry(id);
-    setEntries((prev) => prev.filter((e) => e.id !== id));
+  const deleteEntry = useCallback((id: string) => {
+    api.deleteEntry(id);
+    setRevision((r) => r + 1);
   }, []);
 
   const updateStatus = useCallback(
-    async (id: string, status: Entry["status"]) => {
-      const entry = await api.updateEntryStatus(id, status);
-      setEntries((prev) => prev.map((e) => (e.id === id ? entry : e)));
+    (id: string, status: Entry["status"]) => {
+      const entry = api.updateEntryStatus(id, status);
+      setRevision((r) => r + 1);
       return entry;
     },
     []
@@ -60,8 +48,8 @@ export function useEntries(params?: EntriesParams) {
 
   return {
     entries,
-    loading,
-    error,
+    loading: false,
+    error: null,
     createEntry,
     updateEntry,
     deleteEntry,
@@ -72,20 +60,24 @@ export function useEntries(params?: EntriesParams) {
 
 /**
  * Standalone mutation functions for entries — no fetch on mount.
- * Use this in components (e.g. EntryForm) that only need create/update
- * and should not trigger a network request for the full entry list.
  */
 export function useEntryMutations() {
+  const [revision, setRevision] = useState(0);
+
   const createEntry = useCallback(
-    async (data: Partial<Entry>) => {
-      return await api.createEntry(data);
+    (data: Partial<Entry>) => {
+      const entry = api.createEntry(data);
+      setRevision((r) => r + 1);
+      return entry;
     },
     []
   );
 
   const updateEntry = useCallback(
-    async (id: string, data: Partial<Entry>) => {
-      return await api.updateEntry(id, data);
+    (id: string, data: Partial<Entry>) => {
+      const entry = api.updateEntry(id, data);
+      setRevision((r) => r + 1);
+      return entry;
     },
     []
   );
