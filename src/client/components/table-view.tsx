@@ -145,10 +145,8 @@ export function TableView() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-36">Date</TableHead>
-                <TableHead>Expected Output</TableHead>
                 <TableHead>Work Assignment</TableHead>
                 <TableHead className="max-w-xs">Accomplishments</TableHead>
-                <TableHead className="w-16 text-center">Days</TableHead>
                 <TableHead className="w-28">Status</TableHead>
                 <TableHead className="w-28 text-right">Actions</TableHead>
               </TableRow>
@@ -160,16 +158,10 @@ export function TableView() {
                     {formatDate(entry.date)}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">
-                    {entry.expected_output}
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate">
                     {entry.work_assignment}
                   </TableCell>
                   <TableCell className="max-w-xs whitespace-normal break-words">
                     {entry.accomplishments}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {entry.duration_days}
                   </TableCell>
                   <TableCell>
                     <Badge
