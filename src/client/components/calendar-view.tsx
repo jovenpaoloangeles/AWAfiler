@@ -271,7 +271,7 @@ export function CalendarView() {
                 </div>
 
                 {/* Day cells */}
-                <div className="grid grid-cols-7">
+                <div className="grid auto-rows-fr grid-cols-7">
                   {calendarCells.map((cell, idx) => {
                     const dayEntries = entriesByDate.get(cell.dateStr) || [];
                     const border = getDayBorder(dayEntries);
@@ -282,7 +282,7 @@ export function CalendarView() {
                       <div
                         key={idx}
                         className={`
-                          group relative min-h-[100px] border-b border-r border-border p-1
+                          group relative flex min-h-[100px] flex-col border-b border-r border-border p-1
                           ${!cell.isCurrentMonth ? "bg-muted/30" : ""}
                           ${borderColor ? `border-l-2 ${borderColor}` : ""}
                           cursor-pointer transition-colors hover:bg-muted/50
@@ -300,7 +300,7 @@ export function CalendarView() {
                         </div>
 
                         {/* Entry summaries */}
-                        <div className="mt-0.5 space-y-0.5">
+                        <div className="mt-0.5 min-h-0 flex-1 space-y-0.5 overflow-hidden">
                           {dayEntries.slice(0, 2).map((entry) => (
                             <Tooltip key={entry.id}>
                               <TooltipTrigger>
