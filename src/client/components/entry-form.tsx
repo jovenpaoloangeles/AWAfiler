@@ -145,6 +145,7 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
               mode="revise"
               value={accomplishments}
               onAccept={(text) => setAccomplishments(text)}
+              onAcceptAssignment={(title) => setWorkAssignment(title)}
             />
           </div>
 

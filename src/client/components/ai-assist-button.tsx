@@ -5,10 +5,21 @@ import { useAIStream, type AIMode } from "@/hooks/use-ai-stream";
 interface AIAssistButtonProps {
   value: string;
   onAccept: (text: string) => void;
+  onAcceptAssignment?: (assignment: string) => void;
   mode: "revise" | "expand";
 }
 
-export function AIAssistButton({ value, onAccept, mode }: AIAssistButtonProps) {
+function parseReviseResponse(text: string): { title: string; bullets: string } {
+  const lines = text.split("\n");
+  const titleLine = lines.find((l) => l.startsWith("Title:"));
+  const title = titleLine ? titleLine.replace(/^Title:\s*/, "").trim() : "";
+  const bullets = lines
+    .filter((l) => l.trimStart().startsWith("-"))
+    .join("\n");
+  return { title, bullets };
+}
+
+export function AIAssistButton({ value, onAccept, onAcceptAssignment, mode }: AIAssistButtonProps) {
   const { text, isStreaming, error, stream, stop, reset } = useAIStream();
 
   const hasText = text.length > 0;
@@ -20,7 +31,13 @@ export function AIAssistButton({ value, onAccept, mode }: AIAssistButtonProps) {
   };
 
   const handleAccept = () => {
-    onAccept(text);
+    if (mode === "revise") {
+      const { title, bullets } = parseReviseResponse(text);
+      onAccept(bullets || text);
+      if (title && onAcceptAssignment) onAcceptAssignment(title);
+    } else {
+      onAccept(text);
+    }
     reset();
   };
 

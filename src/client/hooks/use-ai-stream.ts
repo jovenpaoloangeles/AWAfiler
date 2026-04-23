@@ -58,7 +58,19 @@ Generated entries should be indistinguishable from the user's own writing.
 `;
 
 const USER_PROMPTS: Record<string, string> = {
-  revise: `Revise this rough note into a formal accomplishment paragraph. Third person, past tense, concise. Keep the facts — just fix the language. Avoid fluff.
+  revise: `Revise this rough note into formal accomplishment bullet points. Also infer a concise work assignment title from the content.
+
+Format your response EXACTLY as:
+Title: [concise 2-6 word work assignment title inferred from the content]
+- [First accomplishment, third person, past tense]
+- [Second accomplishment, third person, past tense]
+
+Rules:
+- Infer the Title from the nature of the work described — do not copy phrases verbatim unless they are already a clean title
+- Each bullet covers one distinct completed task
+- Third person, past tense, action verb at the start
+- Keep the facts — just fix the language, no fluff
+- Output ONLY the Title line and bullet points — no intro, no explanations
 
 Rough note:
 {input}`,
@@ -174,7 +186,7 @@ export function useAIStream(): UseAIStreamReturn {
         const userPrompt = buildUserPrompt(mode, input);
 
         const response = await ai.models.generateContentStream({
-          model: "gemini-3.1-flash-lite-preview",
+          model: "gemini-2.0-flash-lite",
           contents: userPrompt,
           config: {
             systemInstruction: systemPrompt,
