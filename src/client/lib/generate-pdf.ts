@@ -82,31 +82,24 @@ export async function generatePdf(
   const durationLabel = `${totalDays} Day${totalDays !== 1 ? "s" : ""}`;
 
   // --- Build table body ---
-  const body: (string | { content: string; rowSpan?: number; styles?: Record<string, unknown> })[][] =
-    sorted.map((entry, i) => {
-      const row: (string | { content: string; rowSpan?: number; styles?: Record<string, unknown> })[] = [];
-
-      if (i === 0) {
-        row.push({
-          content: durationLabel,
-          rowSpan: sorted.length,
-          styles: { valign: "middle", halign: "center", fontStyle: "bold" },
-        });
-      }
-
-      row.push(entry.work_assignment);
-      row.push(formatDateForPdf(entry.date));
-      row.push(entry.accomplishments);
-
-      return row;
-    });
+  // rowSpan is not supported across page breaks in jsPDF-autoTable,
+  // so we show the duration only in the first row as a normal cell.
+  const body: (string | { content: string; styles?: Record<string, unknown> })[][] =
+    sorted.map((entry, i) => [
+      i === 0
+        ? { content: durationLabel, styles: { valign: "middle", halign: "center", fontStyle: "bold" } }
+        : "",
+      entry.work_assignment,
+      formatDateForPdf(entry.date),
+      entry.accomplishments,
+    ]);
 
   // --- Table ---
   const tableWidth = pageWidth - marginLeft - marginRight;
-  const colDuration = tableWidth * 0.12;
+  const colDuration = tableWidth * 0.16; // widened from 0.12 to fit "DURATION" header text
   const colWork = tableWidth * 0.25;
   const colDate = tableWidth * 0.13;
-  const colAccomp = tableWidth * 0.50;
+  const colAccomp = tableWidth * 0.46; // reduced from 0.50 to compensate
 
   autoTable(doc, {
     startY: y,
