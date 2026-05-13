@@ -6,7 +6,7 @@ import path from "path";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   root: "src/client",
-  base: "/AWAfiler/",
+  base: process.env.VITE_BASE_PATH ?? "/AWAfiler/",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src/client"),
