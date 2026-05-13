@@ -19,6 +19,7 @@ export async function generatePdf(
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 72; // 2.54cm = 1 inch = 72pt
   const marginLeft = margin;
   const marginRight = margin;
@@ -81,14 +82,10 @@ export async function generatePdf(
   const totalDays = sorted.reduce((sum, e) => sum + (e.duration_days || 1), 0);
   const durationLabel = `${totalDays} Day${totalDays !== 1 ? "s" : ""}`;
 
-  // --- Build table body ---
-  // rowSpan is not supported across page breaks in jsPDF-autoTable,
-  // so we show the duration only in the first row as a normal cell.
-  const body: (string | { content: string; styles?: Record<string, unknown> })[][] =
-    sorted.map((entry, i) => [
-      i === 0
-        ? { content: durationLabel, styles: { valign: "middle", halign: "center", fontStyle: "bold" } }
-        : "",
+  // --- Build table body (Duration column left empty; drawn via didDrawPage) ---
+  const body: string[][] =
+    sorted.map((entry) => [
+      "",
       entry.work_assignment,
       formatDateForPdf(entry.date),
       entry.accomplishments,
@@ -96,14 +93,14 @@ export async function generatePdf(
 
   // --- Table ---
   const tableWidth = pageWidth - marginLeft - marginRight;
-  const colDuration = tableWidth * 0.16; // widened from 0.12 to fit "DURATION" header text
+  const colDuration = tableWidth * 0.16;
   const colWork = tableWidth * 0.25;
   const colDate = tableWidth * 0.13;
-  const colAccomp = tableWidth * 0.46; // reduced from 0.50 to compensate
+  const colAccomp = tableWidth * 0.46;
 
   autoTable(doc, {
     startY: y,
-    margin: { left: marginLeft, right: marginRight },
+    margin: { left: marginLeft, right: marginRight, top: margin },
     theme: "grid",
     styles: {
       fontSize: 12,
@@ -151,10 +148,44 @@ export async function generatePdf(
       2: { cellWidth: colDate, halign: "center", fontStyle: "bold" },
       3: { cellWidth: colAccomp },
     },
+    didDrawPage: (data: { pageNumber: number; cursor?: { y: number } | null; table: { head: { height: number }[] } }) => {
+      const headHeight = data.table.head.reduce((sum: number, row: { height: number }) => sum + row.height, 0);
+      const bodyStartY = data.pageNumber === 1 ? y + headHeight : margin + headHeight;
+      const bodyEndY = data.cursor?.y ?? bodyStartY;
+      if (bodyEndY <= bodyStartY) return;
+
+      // Fill Duration column with white to erase internal cell borders
+      doc.setFillColor(255, 255, 255);
+      doc.rect(marginLeft, bodyStartY, colDuration, bodyEndY - bodyStartY, "F");
+
+      // Draw merged outer border
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.rect(marginLeft, bodyStartY, colDuration, bodyEndY - bodyStartY);
+
+      // Draw duration text centered
+      doc.setFont("Arial", "bold");
+      doc.setFontSize(12);
+      doc.text(durationLabel, marginLeft + colDuration / 2, (bodyStartY + bodyEndY) / 2, {
+        align: "center",
+        baseline: "middle",
+      });
+    },
   });
 
   // --- Signature Section ---
-  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 40;
+  const tableEndY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  // Height of the signature content below the initial gap ( Prepared/Appproved line + 40pt + name + 14pt + title )
+  const sigContentHeight = 57;
+  const spaceBelow = pageHeight - margin - tableEndY;
+
+  let sigGap = 40;
+  if (spaceBelow < 40 + sigContentHeight && spaceBelow >= sigContentHeight + 10) {
+    // Signature barely fits — shrink the gap to avoid orphaning it alone on a new page
+    sigGap = spaceBelow - sigContentHeight;
+  }
+
+  const finalY = tableEndY + sigGap;
 
   const sigLeftX = marginLeft;
   const sigRightX = pageWidth / 2 + 20;
