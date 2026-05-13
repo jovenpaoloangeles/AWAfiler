@@ -72,6 +72,13 @@ function buildPresets(): PeriodOption[] {
   return options;
 }
 
+function getDefaultPreset(): string {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const half = now.getDate() <= 15 ? "first" : "second";
+  return `${now.getFullYear()}-${mm}-${half}`;
+}
+
 function formatPeriodLabel(start: string, end: string): string {
   const s = new Date(start + "T00:00:00");
   const e = new Date(end + "T00:00:00");
@@ -92,7 +99,7 @@ export function GeneratePdfDialog({
   const presets = useMemo(() => buildPresets(), []);
 
   const [mode, setMode] = useState<"preset" | "custom">("preset");
-  const [selectedPreset, setSelectedPreset] = useState<string>("");
+  const [selectedPreset, setSelectedPreset] = useState<string>(getDefaultPreset);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [generating, setGenerating] = useState(false);
