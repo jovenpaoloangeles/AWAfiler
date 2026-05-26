@@ -186,7 +186,7 @@ export function useAIStream(): UseAIStreamReturn {
         const userPrompt = buildUserPrompt(mode, input);
 
         const response = await ai.models.generateContentStream({
-          model: "gemini-3.1-flash-lite-preview",
+          model: "gemini-3.1-flash-lite",
           contents: userPrompt,
           config: {
             systemInstruction: systemPrompt,
