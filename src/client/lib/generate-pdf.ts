@@ -78,18 +78,17 @@ export async function generatePdf(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
-  // --- Calculate total duration ---
-  const totalDays = sorted.reduce((sum, e) => sum + (e.duration_days || 1), 0);
-  const durationLabel = `${totalDays} Day${totalDays !== 1 ? "s" : ""}`;
-
-  // --- Build table body (Duration column left empty; drawn via didDrawPage) ---
+  // --- Build table body (1 WFH day = 1 row) ---
   const body: string[][] =
-    sorted.map((entry) => [
-      "",
-      entry.work_assignment,
-      formatDateForPdf(entry.date),
-      entry.accomplishments,
-    ]);
+    sorted.map((entry) => {
+      const days = entry.duration_days || 1;
+      return [
+        `${days} Day${days !== 1 ? "s" : ""}`,
+        entry.work_assignment,
+        formatDateForPdf(entry.date),
+        entry.accomplishments,
+      ];
+    });
 
   // --- Table ---
   const tableWidth = pageWidth - marginLeft - marginRight;
@@ -147,29 +146,6 @@ export async function generatePdf(
       1: { cellWidth: colWork },
       2: { cellWidth: colDate, halign: "center", fontStyle: "bold" },
       3: { cellWidth: colAccomp },
-    },
-    didDrawPage: (data: { pageNumber: number; cursor?: { y: number } | null; table: { head: { height: number }[] } }) => {
-      const headHeight = data.table.head.reduce((sum: number, row: { height: number }) => sum + row.height, 0);
-      const bodyStartY = data.pageNumber === 1 ? y + headHeight : margin + headHeight;
-      const bodyEndY = data.cursor?.y ?? bodyStartY;
-      if (bodyEndY <= bodyStartY) return;
-
-      // Fill Duration column with white to erase internal cell borders
-      doc.setFillColor(255, 255, 255);
-      doc.rect(marginLeft, bodyStartY, colDuration, bodyEndY - bodyStartY, "F");
-
-      // Draw merged outer border
-      doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.5);
-      doc.rect(marginLeft, bodyStartY, colDuration, bodyEndY - bodyStartY);
-
-      // Draw duration text centered
-      doc.setFont("Arial", "bold");
-      doc.setFontSize(12);
-      doc.text(durationLabel, marginLeft + colDuration / 2, (bodyStartY + bodyEndY) / 2, {
-        align: "center",
-        baseline: "middle",
-      });
     },
   });
 
