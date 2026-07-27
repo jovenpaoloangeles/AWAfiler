@@ -10,6 +10,9 @@ export function Settings() {
   const [name, setName] = useState("");
   const [position, setPosition] = useState("");
   const [division, setDivision] = useState("");
+  const [username,setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [approverName, setApproverName] = useState("");
   const [approverTitle, setApproverTitle] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,6 +46,8 @@ export function Settings() {
         division,
         approver_name: approverName || null,
         approver_title: approverTitle || null,
+	username,
+	password,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -126,6 +131,43 @@ export function Settings() {
             />
           </div>
 
+	  <div className="space-y-1.5">
+ 	    <Label htmlFor="profile-username">ERP Username</Label>
+  	    <Input
+	      id="profile-username"
+    	      value={username}
+    	      onChange={(e) => setUsername(e.target.value)}
+    	      placeholder="ERP Username"
+  	    />
+	  </div>
+
+	  <div className="space-y-1.5">
+  	     <Label htmlFor="profile-password">ERP Password</Label>
+
+  	     <div className="relative">
+    	     <Input
+      		id="profile-password"
+      		type={showPassword ? "text" : "password"}
+      		value={password}
+      		onChange={(e) => setPassword(e.target.value)}
+      		placeholder="ERP Password"
+      		className="pr-10"
+    	      />
+
+    	  <button
+      		type="button"
+      		onClick={() => setShowPassword((v) => !v)}
+      		className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+      		tabIndex={-1}
+    	  >
+      {showPassword ? (
+        <EyeOff className="size-4" />
+      ) : (
+        <Eye className="size-4" />
+      )}
+    </button>
+  </div>
+</div>
           <Button type="submit" disabled={saving}>
             {saving ? (
               <Loader2 className="size-4 animate-spin" />
