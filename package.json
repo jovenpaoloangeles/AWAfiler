@@ -4,7 +4,7 @@
     "dev:server": "bun --watch src/server/index.ts",
     "dev": "bunx vite",
     "build": "bunx vite build",
-    "start": "bun src/server/index.ts",
+    "start": "NODE_ENV=production bun src/server/index.ts",
     "preview": "bunx vite preview"
   },
   "dependencies": {
