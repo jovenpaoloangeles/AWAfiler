@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Plus,
   Loader2,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -241,10 +242,15 @@ export function CalendarView() {
                 Finalized
               </div>
             </div>
+            <Button variant="outline" size="sm">
+              <RefreshCw className="size-4" />
+              Sync ERP
+            </Button>
             <Button size="sm" onClick={handleNewEntry}>
               <Plus className="size-4" />
               New Entry
             </Button>
+
           </div>
         </div>
 
