@@ -248,11 +248,6 @@ export function CalendarView() {
               <RefreshCw className="size-4" />
               Sync ERP
             </Button>
-
-            <Button variant="outline" size="sm">
-              <RefreshCw className="size-4" />
-              Sync ERP
-            </Button>
             <Button size="sm" onClick={handleNewEntry}>
               <Plus className="size-4" />
               New Entry
