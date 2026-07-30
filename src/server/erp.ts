@@ -105,7 +105,7 @@ export async function login(username: string, password: string): Promise<ErpSess
 
 // ── Scraping ────────────────────────────────────────────────
 
-interface PassSlip {
+export interface PassSlip {
   id: string;
   start: Date;
   end: Date;
