@@ -26,6 +26,46 @@ export interface ErpEntry {
   accomplishments: string;
   duration_days: number;
 }
+export class ErpNetworkError extends Error {}
+
+/** The ERP is only routable from the office network or over the VPN. */
+const OFFLINE_HINT =
+  "Could not reach the ERP at erp.asti.dost.gov.ph. It is only reachable from " +
+  "the internal network — connect to the office network or the VPN, then try again.";
+
+const REQUEST_TIMEOUT_MS = Number(process.env.ERP_TIMEOUT_MS) || 20_000;
+
+// Off-VPN, the internal hostname usually fails to resolve (ENOTFOUND). The
+// rest cover a resolvable-but-unroutable host, which is what you get on some
+// guest networks.
+const OFFLINE_CODES = new Set([
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ECONNREFUSED",
+  "ConnectionRefused",
+  "ECONNRESET",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "ETIMEDOUT",
+  "FailedToOpenSocket",
+]);
+
+function asNetworkError(err: unknown): ErpNetworkError {
+  const { code, name } = (err ?? {}) as { code?: string; name?: string };
+
+  if (name === "TimeoutError" || name === "AbortError" || code === "ETIMEDOUT") {
+    return new ErpNetworkError(
+      `The ERP did not respond within ${REQUEST_TIMEOUT_MS / 1000}s. ${OFFLINE_HINT}`,
+    );
+  }
+  if (code && OFFLINE_CODES.has(code)) {
+    return new ErpNetworkError(OFFLINE_HINT);
+  }
+  // Anything else thrown by fetch is still transport-level; keep the raw text.
+  const detail = err instanceof Error ? err.message : String(err);
+  return new ErpNetworkError(`${OFFLINE_HINT} (${detail})`);
+}
+
 
 // ── Session ─────────────────────────────────────────────────
 // Bun's fetch has no cookie jar and drops Set-Cookie from intermediate
@@ -40,14 +80,22 @@ class ErpSession {
     let options = init;
 
     for (let hop = 0; hop < 5; hop++) {
-      const res = await fetch(target, {
-        ...options,
-        redirect: "manual",
-        headers: { ...BASE_HEADERS, ...options.headers, ...this.cookieHeader() },
-        // The ERP certificate is server-side and not available to us.
-        // Equivalent to requests' verify=False.
-        tls: { rejectUnauthorized: false },
-      } as RequestInit);
+      let res: Response;
+      try {
+        res = await fetch(target, {
+          ...options,
+          redirect: "manual",
+          headers: { ...BASE_HEADERS, ...options.headers, ...this.cookieHeader() },
+          // The ERP certificate is server-side and not available to us.
+          // Equivalent to requests' verify=False.
+          tls: { rejectUnauthorized: false },
+          // Without this, an unroutable host hangs until the OS gives up.
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        } as RequestInit);
+      } catch (err) {
+        throw asNetworkError(err);
+      }
+
 
       this.storeCookies(res);
 
@@ -83,7 +131,17 @@ class ErpSession {
 export async function login(username: string, password: string): Promise<ErpSession> {
   const session = new ErpSession();
 
-  await session.request(LOGIN_URL); // establish the session cookie
+  // Establish the session cookie, and confirm we actually landed on the ERP.
+  // A captive portal or DNS hijack answers with a 200 that isn't the login
+  // page — without this check that surfaces later as "wrong password".
+  const landing = await session.request(LOGIN_URL);
+  if (!landing.ok || !(await landing.text()).includes('name="LoginForm[password]"')) {
+    throw new ErpNetworkError(
+      "Reached erp.asti.dost.gov.ph but got something other than the ERP login " +
+        "page. You may be behind a captive portal or on the wrong network — " +
+        "check your VPN connection.",
+    );
+  }
 
   const res = await session.request(LOGIN_URL, {
     method: "POST",
@@ -175,7 +233,9 @@ function parseErpDate(value: string): Date {
 
 const toISO = (d: Date): string => d.toISOString().slice(0, 10);
 
-/** Current half-month payroll window. */
+/** Current half-month payroll window. 
+ * Consider changing this logic to reflect the whole month instead
+*/
 export function payrollPeriod(today = new Date()): [Date, Date] {
   const [y, m, day] = [today.getFullYear(), today.getMonth(), today.getDate()];
   if (day <= 15) return [new Date(Date.UTC(y, m, 1)), new Date(Date.UTC(y, m, 15))];

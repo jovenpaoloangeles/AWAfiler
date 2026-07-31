@@ -1,5 +1,5 @@
 import { join, normalize, resolve } from "path";
-import { ErpLoginError, fetchPassSlips, login, payrollPeriod, toEntries } from "./erp";
+import { ErpLoginError, ErpNetworkError, fetchPassSlips, login, payrollPeriod, toEntries } from "./erp";
 
 const PORT = Number(process.env.PORT) || 3000;
 const IS_DEV = process.env.NODE_ENV !== "production";
@@ -46,10 +46,17 @@ async function handlePassSlips(
       },
       { headers },
     );
-  } catch (e) {
-    const status = e instanceof ErpLoginError ? 401 : 502;
-    const error = e instanceof ErpLoginError ? e.message : `ERP unreachable: ${e}`;
-    return Response.json({ error }, { status, headers });
+    } catch (e) {
+    if (e instanceof ErpLoginError) {
+      return Response.json({ error: e.message }, { status: 401, headers });
+    }
+    if (e instanceof ErpNetworkError) {
+      // 503, not 502 — the ERP isn't broken, we just can't get to it.
+      return Response.json({ error: e.message }, { status: 503, headers });
+    }
+    console.error("Unexpected ERP failure:", e);
+    const detail = e instanceof Error ? e.message : String(e);
+    return Response.json({ error: `ERP sync failed: ${detail}` }, { status: 500, headers });
   }
 }
 

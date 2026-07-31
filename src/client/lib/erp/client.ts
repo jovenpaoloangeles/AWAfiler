@@ -15,11 +15,21 @@ export async function fetchPassSlips(
   username: string,
   password: string,
 ): Promise<ErpSyncResult> {
-  const res = await fetch("/api/erp/pass-slips", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
+  
+  let res: Response;
+  try {
+    res = await fetch("/api/erp/pass-slips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch {
+    // The request never left the browser — this is our server, not the ERP.
+    throw new Error(
+      "Could not reach the AWAfiler server. Make sure it is running " +
+        "(bun run dev:server).",
+    );
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

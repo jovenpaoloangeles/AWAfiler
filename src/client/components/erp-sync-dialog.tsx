@@ -57,9 +57,12 @@ export function ErpSyncDialog({ open, onOpenChange }: ErpSyncDialogProps) {
         // Keep the spinner up so the toast lands before the reload takes over.
         setTimeout(() => window.location.reload(), 900);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "ERP sync failed");
+        toast.error(err instanceof Error ? err.message : "ERP sync failed", {
+          duration: 10_000,
+        });
         setSyncing(false);
       }
+
     },
     [username, password],
   );
