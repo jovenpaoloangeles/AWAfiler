@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Plus,
   Loader2,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import {
 import { useEntries } from "@/hooks/use-entries";
 import { type Entry } from "@/lib/api";
 import { EntryForm } from "@/components/entry-form";
+import { ErpSyncDialog } from "@/components/erp-sync-dialog";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -80,7 +82,7 @@ export function CalendarView() {
   const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
-
+  const [syncOpen, setSyncOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | null>(null);
@@ -241,10 +243,16 @@ export function CalendarView() {
                 Finalized
               </div>
             </div>
+            
+            <Button variant="outline" size="sm" onClick={() => setSyncOpen(true)}>
+              <RefreshCw className="size-4" />
+              Sync ERP
+            </Button>
             <Button size="sm" onClick={handleNewEntry}>
               <Plus className="size-4" />
               New Entry
             </Button>
+
           </div>
         </div>
 
@@ -347,7 +355,8 @@ export function CalendarView() {
             </Card>
           )}
         </div>
-
+        <ErpSyncDialog open={syncOpen} onOpenChange={setSyncOpen} />
+        
         {/* Entry Form Dialog */}
         <EntryForm
           open={formOpen}

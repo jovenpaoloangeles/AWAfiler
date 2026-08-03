@@ -63,6 +63,7 @@ The rest of the variables have sensible defaults — you only need to change the
 ```bash
 # Terminal 1 — API server
 bun run dev
+bun run dev:server  // To run the ERP sync
 
 # Terminal 2 — Vite dev server (hot reload)
 bun run dev:client
