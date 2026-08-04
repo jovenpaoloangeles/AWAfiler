@@ -20,6 +20,8 @@ import { type Entry } from "@/lib/api";
 import { EntryForm } from "@/components/entry-form";
 import { ErpSyncDialog } from "@/components/erp-sync-dialog";
 
+const ERP_ENABLED = import.meta.env.VITE_ERP_ENABLED === "true";
+
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const MONTH_NAMES = [
@@ -244,10 +246,12 @@ export function CalendarView() {
               </div>
             </div>
             
-            <Button variant="outline" size="sm" onClick={() => setSyncOpen(true)}>
-              <RefreshCw className="size-4" />
-              Sync ERP
-            </Button>
+            {ERP_ENABLED && (
+              <Button variant="outline" size="sm" onClick={() => setSyncOpen(true)}>
+                <RefreshCw className="size-4" />
+                Sync ERP
+              </Button>
+            )}
             <Button size="sm" onClick={handleNewEntry}>
               <Plus className="size-4" />
               New Entry
@@ -355,7 +359,7 @@ export function CalendarView() {
             </Card>
           )}
         </div>
-        <ErpSyncDialog open={syncOpen} onOpenChange={setSyncOpen} />
+        {ERP_ENABLED && <ErpSyncDialog open={syncOpen} onOpenChange={setSyncOpen} />}
         
         {/* Entry Form Dialog */}
         <EntryForm

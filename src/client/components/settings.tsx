@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
+
+const ERP_ENABLED = import.meta.env.VITE_ERP_ENABLED === "true";
 import { Loader2, Save, Check, Info, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,15 +131,17 @@ export function Settings() {
             />
           </div>
 
-	  <div className="space-y-1.5">
- 	    <Label htmlFor="profile-username">ERP Username</Label>
-  	    <Input
-	      id="profile-username"
-    	      value={username}
-    	      onChange={(e) => setUsername(e.target.value)}
-    	      placeholder="ERP Username"
-  	    />
-	  </div>
+          {ERP_ENABLED && (
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-username">ERP Username</Label>
+              <Input
+                id="profile-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="ERP Username"
+              />
+            </div>
+          )}
           <Button type="submit" disabled={saving}>
             {saving ? (
               <Loader2 className="size-4 animate-spin" />

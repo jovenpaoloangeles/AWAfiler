@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
+      # VITE_ERP_ENABLED is intentionally NOT set here — ERP sync is hidden on GitHub Pages
       - run: bun run build
       - uses: actions/upload-pages-artifact@v3
         with:
