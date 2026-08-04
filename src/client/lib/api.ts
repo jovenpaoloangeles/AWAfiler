@@ -23,6 +23,7 @@ export interface Profile {
   approver_name: string | null;
   approver_title: string | null;
   created_at: string;
+  erp_username: string;
   has_api_key?: boolean;
 }
 
@@ -49,6 +50,8 @@ interface AppData {
     approver_name: string | null;
     approver_title: string | null;
     gemini_api_key: string | null;
+    erp_username: string;
+
   };
   entries: Entry[];
   context_documents: Array<{
@@ -72,6 +75,7 @@ function createEmptyData(): AppData {
       approver_name: null,
       approver_title: null,
       gemini_api_key: null,
+      erp_username: "",
     },
     entries: [],
     context_documents: [],
@@ -178,6 +182,47 @@ export const api = {
     return data.entries[idx];
   },
 
+    /**
+   * Write ERP pass-slip data into entries, one per day.
+   * Existing entries on a date keep their accomplishments and expected output;
+   * only the work assignment is replaced. Everything touched becomes a draft.
+   */
+  upsertErpEntries: (
+    incoming: Array<{ date: string; work_assignment: string }>,
+  ): { created: number; updated: number } => {
+    const data = readData();
+    const now = new Date().toISOString();
+    let created = 0;
+    let updated = 0;
+
+    for (const item of incoming) {
+      const existing = data.entries.find((e) => e.date === item.date);
+      if (existing) {
+        existing.work_assignment = item.work_assignment;
+        existing.status = "draft";
+        existing.updated_at = now;
+        updated++;
+      } else {
+        data.entries.push({
+          id: nanoid(),
+          expected_output: "",
+          work_assignment: item.work_assignment,
+          date: item.date,
+          accomplishments: "",
+          duration_days: 1,
+          status: "draft",
+          ai_generated: 0,
+          created_at: now,
+          updated_at: now,
+        });
+        created++;
+      }
+    }
+
+    writeData(data);
+    return { created, updated };
+  },
+
   // Profile
   getProfile: (): Profile => {
     const data = readData();
@@ -190,6 +235,7 @@ export const api = {
       approver_title: data.profile.approver_title,
       created_at: "",
       has_api_key: !!data.profile.gemini_api_key,
+      erp_username: data.profile.erp_username ?? "",
     };
   },
   updateProfile: (body: Partial<Profile>): Profile => {
@@ -199,6 +245,7 @@ export const api = {
     if (body.division !== undefined) data.profile.division = body.division;
     if (body.approver_name !== undefined) data.profile.approver_name = body.approver_name;
     if (body.approver_title !== undefined) data.profile.approver_title = body.approver_title;
+    if (body.erp_username !== undefined) data.profile.erp_username = body.erp_username;
     writeData(data);
     return api.getProfile();
   },

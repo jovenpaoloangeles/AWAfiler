@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
+
+const ERP_ENABLED = import.meta.env.VITE_ERP_ENABLED === "true";
 import { Loader2, Save, Check, Info, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +12,7 @@ export function Settings() {
   const [name, setName] = useState("");
   const [position, setPosition] = useState("");
   const [division, setDivision] = useState("");
+  const [username,setUsername] = useState("");
   const [approverName, setApproverName] = useState("");
   const [approverTitle, setApproverTitle] = useState("");
   const [loading, setLoading] = useState(true);
@@ -29,6 +32,7 @@ export function Settings() {
     setApproverName(profile.approver_name ?? "");
     setApproverTitle(profile.approver_title ?? "");
     setHasApiKey(profile.has_api_key ?? false);
+    setUsername(profile.erp_username);
     setLoading(false);
   }, []);
 
@@ -43,6 +47,7 @@ export function Settings() {
         division,
         approver_name: approverName || null,
         approver_title: approverTitle || null,
+        erp_username: username,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -126,6 +131,17 @@ export function Settings() {
             />
           </div>
 
+          {ERP_ENABLED && (
+            <div className="space-y-1.5">
+              <Label htmlFor="profile-username">ERP Username</Label>
+              <Input
+                id="profile-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="ERP Username"
+              />
+            </div>
+          )}
           <Button type="submit" disabled={saving}>
             {saving ? (
               <Loader2 className="size-4 animate-spin" />

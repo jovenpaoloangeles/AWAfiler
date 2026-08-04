@@ -2,5 +2,7 @@ services:
   awafiler:
     build: .
     ports:
-      - "3456:80"
+      - "80:3000"
+    environment:
+      - NODE_ENV=production
     restart: unless-stopped
