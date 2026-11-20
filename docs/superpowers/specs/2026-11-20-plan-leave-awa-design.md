@@ -94,7 +94,7 @@ These are my calls; the user may revisit them.
    AWA** (removes the leave date, creates a planned entry).
 4. **Conflicts.** The quick menu only appears on empty days, so a day can't be both leave and have
    entries via the menu. If ERP sync writes an entry onto a leave date, show both; no auto-cleanup.
-   ERP sync already sets touched entries to `draft`, which naturally converts planned ones.
+   ERP sync sets touched entries to `draft`, except a planned entry with blank accomplishments stays `planned` (see note 2).
 5. **Excel export** (decided by the user): same warning and same include-as-blank-rows behavior as
    the PDF, in every mode including "Select All". Future planned days are listed in the warning too.
 6. **Table view** shows planned entries with a "Planned" badge (outline variant). Its status toggle
