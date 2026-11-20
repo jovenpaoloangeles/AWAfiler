@@ -46,10 +46,6 @@ const MONTH_NAMES = [
   "December",
 ];
 
-function formatMonthParam(year: number, month: number): string {
-  return `${year}-${String(month + 1).padStart(2, "0")}`;
-}
-
 function formatDateStr(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
@@ -105,6 +101,49 @@ function Swatch({ className }: { className: string }) {
   return <span className={`inline-block size-2 rounded-sm ${className}`} />;
 }
 
+/** The 6-week (42-day) grid for a month, padded with days from the adjacent months. */
+export function buildCalendarCells(year: number, month: number) {
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDayOfWeek = getFirstDayOfWeek(year, month);
+  const cells: { day: number; dateStr: string; isCurrentMonth: boolean }[] = [];
+
+  // Previous month padding
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevYear = month === 0 ? year - 1 : year;
+  const prevDaysInMonth = getDaysInMonth(prevYear, prevMonth);
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    const day = prevDaysInMonth - i;
+    cells.push({
+      day,
+      dateStr: formatDateStr(prevYear, prevMonth, day),
+      isCurrentMonth: false,
+    });
+  }
+
+  // Current month days
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push({
+      day,
+      dateStr: formatDateStr(year, month, day),
+      isCurrentMonth: true,
+    });
+  }
+
+  // Next month padding to fill 6 rows (42 cells)
+  const remaining = 42 - cells.length;
+  const nextMonth = month === 11 ? 0 : month + 1;
+  const nextYear = month === 11 ? year + 1 : year;
+  for (let day = 1; day <= remaining; day++) {
+    cells.push({
+      day,
+      dateStr: formatDateStr(nextYear, nextMonth, day),
+      isCurrentMonth: false,
+    });
+  }
+
+  return cells;
+}
+
 export function CalendarView() {
   const today = new Date();
   const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
@@ -115,8 +154,12 @@ export function CalendarView() {
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | null>(null);
 
-  const monthParam = formatMonthParam(viewYear, viewMonth);
-  const { entries, loading, refetch } = useEntries({ month: monthParam });
+  const calendarCells = useMemo(() => buildCalendarCells(viewYear, viewMonth), [viewYear, viewMonth]);
+  // Load the whole visible grid, not just the month: padding days are clickable too.
+  const { entries, loading, refetch } = useEntries({
+    start: calendarCells[0].dateStr,
+    end: calendarCells[calendarCells.length - 1].dateStr,
+  });
   const [leaveDates, setLeaveDates] = useState(() => new Set(api.getLeaveDates()));
   const reloadLeave = useCallback(() => setLeaveDates(new Set(api.getLeaveDates())), []);
 
@@ -156,8 +199,6 @@ export function CalendarView() {
     [reloadLeave, planAwa]
   );
 
-  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
-  const firstDayOfWeek = getFirstDayOfWeek(viewYear, viewMonth);
 
   // Group entries by date
   const entriesByDate = useMemo(() => {
@@ -223,46 +264,6 @@ export function CalendarView() {
     refetch();
   }, [refetch]);
 
-  // Build calendar grid cells
-  const calendarCells = useMemo(() => {
-    const cells: { day: number; dateStr: string; isCurrentMonth: boolean }[] = [];
-
-    // Previous month padding
-    const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
-    const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
-    const prevDaysInMonth = getDaysInMonth(prevYear, prevMonth);
-    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-      const day = prevDaysInMonth - i;
-      cells.push({
-        day,
-        dateStr: formatDateStr(prevYear, prevMonth, day),
-        isCurrentMonth: false,
-      });
-    }
-
-    // Current month days
-    for (let day = 1; day <= daysInMonth; day++) {
-      cells.push({
-        day,
-        dateStr: formatDateStr(viewYear, viewMonth, day),
-        isCurrentMonth: true,
-      });
-    }
-
-    // Next month padding to fill 6 rows (42 cells)
-    const remaining = 42 - cells.length;
-    const nextMonth = viewMonth === 11 ? 0 : viewMonth + 1;
-    const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
-    for (let day = 1; day <= remaining; day++) {
-      cells.push({
-        day,
-        dateStr: formatDateStr(nextYear, nextMonth, day),
-        isCurrentMonth: false,
-      });
-    }
-
-    return cells;
-  }, [viewYear, viewMonth, daysInMonth, firstDayOfWeek]);
 
   const isToday = (dateStr: string) => dateStr === todayStr;
 
