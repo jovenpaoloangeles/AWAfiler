@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { api, isUnfilled, statusAfterSave } from "./api";
+import { api, isUnfilled, nextStatus, statusAfterSave } from "./api";
 
 // bun has no localStorage; api.ts only needs getItem/setItem.
 beforeEach(() => {
@@ -67,4 +67,10 @@ describe("planned entries", () => {
     expect(e.status).toBe("planned");
     expect(e.work_assignment).toBe("Pass slip work");
   });
+});
+
+test("nextStatus: planned → draft → finalized → draft", () => {
+  expect(nextStatus("planned")).toBe("draft");
+  expect(nextStatus("draft")).toBe("finalized");
+  expect(nextStatus("finalized")).toBe("draft");
 });

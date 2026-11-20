@@ -131,6 +131,23 @@ export function statusAfterSave(status: Entry["status"], accomplishments: string
   return status === "planned" && accomplishments.trim() !== "" ? "draft" : status;
 }
 
+/** Status badge click: planned → draft, then draft ↔ finalized. */
+export function nextStatus(status: Entry["status"]): Entry["status"] {
+  return status === "draft" ? "finalized" : "draft";
+}
+
+export const STATUS_LABEL: Record<Entry["status"], string> = {
+  planned: "Planned",
+  draft: "Draft",
+  finalized: "Finalized",
+};
+
+export const STATUS_BADGE_VARIANT: Record<Entry["status"], "outline" | "secondary" | "default"> = {
+  planned: "outline",
+  draft: "secondary",
+  finalized: "default",
+};
+
 export const api = {
   // Entries
   getEntries: (params?: EntriesParams): Entry[] => {

@@ -13,7 +13,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { useEntries } from "@/hooks/use-entries";
-import { type Entry } from "@/lib/api";
+import { STATUS_BADGE_VARIANT, STATUS_LABEL, nextStatus, type Entry } from "@/lib/api";
 import { EntryForm } from "@/components/entry-form";
 
 function getMonthParam(): string {
@@ -91,8 +91,7 @@ export function TableView() {
 
   const handleToggleStatus = useCallback(
     async (entry: Entry) => {
-      const newStatus: Entry["status"] =
-        entry.status === "draft" ? "finalized" : "draft";
+      const newStatus = nextStatus(entry.status);
       try {
         await updateStatus(entry.id, newStatus);
         toast.success(`Entry ${newStatus}`);
@@ -165,11 +164,11 @@ export function TableView() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={entry.status === "draft" ? "secondary" : "default"}
+                      variant={STATUS_BADGE_VARIANT[entry.status]}
                       className="cursor-pointer select-none"
                       onClick={() => handleToggleStatus(entry)}
                     >
-                      {entry.status === "draft" ? "Draft" : "Finalized"}
+                      {STATUS_LABEL[entry.status]}
                     </Badge>
                   </TableCell>
                   <TableCell>
