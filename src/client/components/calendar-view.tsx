@@ -15,8 +15,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import { useEntries } from "@/hooks/use-entries";
-import { type Entry } from "@/lib/api";
+import { api, type Entry } from "@/lib/api";
 import { EntryForm } from "@/components/entry-form";
 import { ErpSyncDialog } from "@/components/erp-sync-dialog";
 
@@ -55,28 +62,47 @@ function getFirstDayOfWeek(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
 
-type DayBorder = "none" | "draft" | "finalized" | "mixed";
+type DayBorder = "none" | "planned" | "draft" | "finalized" | "mixed";
 
-function getDayBorderColor(border: DayBorder): string {
+// Planned uses a dashed bar drawn by ::before, so the cell's other borders stay solid.
+function getDayBorderClass(border: DayBorder): string {
   switch (border) {
+    case "planned":
+      return "before:absolute before:inset-y-0 before:left-0 before:border-l-2 before:border-dashed before:border-amber-500";
     case "draft":
-      return "border-l-blue-500";
-    case "finalized":
-      return "border-l-green-500";
     case "mixed":
-      return "border-l-blue-500";
+      return "border-l-2 border-l-blue-500";
+    case "finalized":
+      return "border-l-2 border-l-green-500";
     default:
       return "";
   }
 }
 
-function getDayBorder(entries: Entry[]): DayBorder {
+const LEAVE_CELL_CLASS =
+  "border-l-2 border-l-purple-500 bg-[repeating-linear-gradient(135deg,var(--color-purple-50)_0_6px,var(--color-purple-100)_6px_12px)] dark:bg-[repeating-linear-gradient(135deg,transparent_0_6px,color-mix(in_oklab,var(--color-purple-900)_30%,transparent)_6px_12px)]";
+
+const CHIP_CLASS: Record<Entry["status"], string> = {
+  planned:
+    "border border-dashed border-amber-500 bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  draft: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  finalized: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+};
+
+export function getDayBorder(entries: Entry[]): DayBorder {
   if (entries.length === 0) return "none";
-  const hasDraft = entries.some((e) => e.status === "draft");
-  const hasFinalized = entries.some((e) => e.status !== "draft");
-  if (hasDraft && hasFinalized) return "mixed";
-  if (hasDraft) return "draft";
-  return "finalized";
+  const statuses = new Set(entries.map((e) => e.status));
+  if (statuses.size > 1) return "mixed";
+  return entries[0].status;
+}
+
+/** "2026-12-23" → "Dec 23" for toasts. */
+function shortDate(dateStr: string): string {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function Swatch({ className }: { className: string }) {
+  return <span className={`inline-block size-2 rounded-sm ${className}`} />;
 }
 
 export function CalendarView() {
@@ -91,6 +117,44 @@ export function CalendarView() {
 
   const monthParam = formatMonthParam(viewYear, viewMonth);
   const { entries, loading, refetch } = useEntries({ month: monthParam });
+  const [leaveDates, setLeaveDates] = useState(() => new Set(api.getLeaveDates()));
+  const reloadLeave = useCallback(() => setLeaveDates(new Set(api.getLeaveDates())), []);
+
+  const planAwa = useCallback(
+    (dateStr: string) => {
+      api.createEntry({ date: dateStr, status: "planned" });
+      refetch();
+      toast.success(`Planned AWA on ${shortDate(dateStr)}`);
+    },
+    [refetch]
+  );
+
+  const markLeave = useCallback(
+    (dateStr: string) => {
+      api.addLeaveDate(dateStr);
+      reloadLeave();
+      toast.success(`Leave marked on ${shortDate(dateStr)}`);
+    },
+    [reloadLeave]
+  );
+
+  const removeLeave = useCallback(
+    (dateStr: string) => {
+      api.removeLeaveDate(dateStr);
+      reloadLeave();
+      toast.success(`Leave removed on ${shortDate(dateStr)}`);
+    },
+    [reloadLeave]
+  );
+
+  const leaveToPlanned = useCallback(
+    (dateStr: string) => {
+      api.removeLeaveDate(dateStr);
+      reloadLeave();
+      planAwa(dateStr);
+    },
+    [reloadLeave, planAwa]
+  );
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDayOfWeek = getFirstDayOfWeek(viewYear, viewMonth);
@@ -132,20 +196,18 @@ export function CalendarView() {
     setViewMonth(now.getMonth());
   }, []);
 
-  const handleDayClick = useCallback(
-    (dateStr: string) => {
-      const dayEntries = entriesByDate.get(dateStr);
-      if (dayEntries && dayEntries.length > 0) {
-        setSelectedEntry(dayEntries[0]);
-        setDefaultDate(null);
-      } else {
-        setSelectedEntry(null);
-        setDefaultDate(dateStr);
-      }
-      setFormOpen(true);
-    },
-    [entriesByDate]
-  );
+  // Days with entries open the form; empty and leave days open the quick menu instead.
+  const openFirstEntry = useCallback((entry: Entry) => {
+    setSelectedEntry(entry);
+    setDefaultDate(null);
+    setFormOpen(true);
+  }, []);
+
+  const openNewEntry = useCallback((dateStr: string) => {
+    setSelectedEntry(null);
+    setDefaultDate(dateStr);
+    setFormOpen(true);
+  }, []);
 
   const handleNewEntry = useCallback(() => {
     const now = new Date();
@@ -244,6 +306,14 @@ export function CalendarView() {
                 <span className="inline-block h-3 w-1 rounded-full bg-green-500" />
                 Finalized
               </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block h-3 w-1 rounded-full bg-amber-500" />
+                Planned AWA
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block h-3 w-1 rounded-full bg-purple-500" />
+                Leave
+              </div>
             </div>
             
             {ERP_ENABLED && (
@@ -286,21 +356,17 @@ export function CalendarView() {
                 <div className="grid auto-rows-fr grid-cols-7">
                   {calendarCells.map((cell, idx) => {
                     const dayEntries = entriesByDate.get(cell.dateStr) || [];
-                    const border = getDayBorder(dayEntries);
+                    const isLeave = leaveDates.has(cell.dateStr);
                     const isTodayCell = isToday(cell.dateStr);
-                    const borderColor = getDayBorderColor(border);
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`
+                    const cellClass = `
                           group relative flex min-h-[100px] flex-col border-b border-r border-border p-1
                           ${!cell.isCurrentMonth ? "bg-muted/30" : ""}
-                          ${borderColor ? `border-l-2 ${borderColor}` : ""}
-                          cursor-pointer transition-colors hover:bg-muted/50
-                        `}
-                        onClick={() => handleDayClick(cell.dateStr)}
-                      >
+                          ${isLeave ? LEAVE_CELL_CLASS : getDayBorderClass(getDayBorder(dayEntries))}
+                          cursor-pointer text-left transition-colors hover:bg-muted/50
+                        `;
+
+                    const inner = (
+                      <>
                         <div
                           className={`
                             flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium
@@ -313,29 +379,35 @@ export function CalendarView() {
 
                         {/* Entry summaries */}
                         <div className="mt-0.5 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+                          {isLeave && (
+                            <div className="truncate rounded bg-purple-100 px-1 py-0.5 text-[11px] leading-tight text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                              Leave
+                            </div>
+                          )}
                           {dayEntries.slice(0, 2).map((entry) => (
                             <Tooltip key={entry.id}>
                               <TooltipTrigger>
                                 <div
-                                  className={`
-                                    truncate rounded px-1 py-0.5 text-[11px] leading-tight
-                                    ${entry.status === "draft"
-                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                                      : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                                    }
-                                  `}
+                                  className={`truncate rounded px-1 py-0.5 text-[11px] leading-tight ${CHIP_CLASS[entry.status]} ${
+                                    entry.work_assignment ? "" : "italic"
+                                  }`}
                                 >
-                                  {entry.work_assignment}
+                                  {entry.work_assignment ||
+                                    (entry.status === "planned" ? "Planned AWA" : "")}
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="top">
                                 <div className="text-xs">
-                                  <div className="font-medium">{entry.work_assignment}</div>
+                                  <div className="font-medium">
+                                    {entry.work_assignment || "Planned AWA"}
+                                  </div>
                                   <Badge
                                     variant={
-                                      entry.status === "draft"
-                                        ? "secondary"
-                                        : "default"
+                                      entry.status === "finalized"
+                                        ? "default"
+                                        : entry.status === "planned"
+                                          ? "outline"
+                                          : "secondary"
                                     }
                                     className="mt-1"
                                   >
@@ -351,7 +423,59 @@ export function CalendarView() {
                             </div>
                           )}
                         </div>
-                      </div>
+                      </>
+                    );
+
+                    if (dayEntries.length > 0) {
+                      return (
+                        <div
+                          key={idx}
+                          className={cellClass}
+                          onClick={() => openFirstEntry(dayEntries[0])}
+                        >
+                          {inner}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <DropdownMenu key={idx}>
+                        <DropdownMenuTrigger
+                          nativeButton={false}
+                          render={<div className={cellClass} />}
+                        >
+                          {inner}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-44">
+                          {isLeave ? (
+                            <>
+                              <DropdownMenuItem onClick={() => removeLeave(cell.dateStr)}>
+                                <Swatch className="bg-purple-500" />
+                                Remove leave
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => leaveToPlanned(cell.dateStr)}>
+                                <Swatch className="bg-amber-500" />
+                                Change to planned AWA
+                              </DropdownMenuItem>
+                            </>
+                          ) : (
+                            <>
+                              <DropdownMenuItem onClick={() => planAwa(cell.dateStr)}>
+                                <Swatch className="bg-amber-500" />
+                                Plan AWA
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => markLeave(cell.dateStr)}>
+                                <Swatch className="bg-purple-500" />
+                                Mark leave
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openNewEntry(cell.dateStr)}>
+                                <Swatch className="bg-blue-500" />
+                                New entry…
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     );
                   })}
                 </div>
