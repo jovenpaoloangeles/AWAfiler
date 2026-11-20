@@ -94,12 +94,16 @@ export async function generatePdf(
   const tableWidth = pageWidth - marginLeft - marginRight;
   const colDuration = tableWidth * 0.16;
   const colWork = tableWidth * 0.25;
-  const colDate = tableWidth * 0.13;
-  const colAccomp = tableWidth * 0.46;
+  // 18% ≈ 72pt text width — fits the longest month name ("September", 55pt at 12pt bold) so
+  // dates wrap per word; narrower widths make autoTable fall back to mid-word chopping.
+  const colDate = tableWidth * 0.18;
+  const colAccomp = tableWidth * 0.41;
 
   autoTable(doc, {
     startY: y,
     margin: { left: marginLeft, right: marginRight, top: margin },
+    // Move a row that doesn't fit to the next page whole, instead of splitting it mid-text
+    rowPageBreak: "avoid",
     theme: "grid",
     styles: {
       fontSize: 12,
@@ -165,6 +169,9 @@ export async function generatePdf(
 
   const sigLeftX = marginLeft;
   const sigRightX = pageWidth / 2 + 20;
+  // Wrap long names/titles per word instead of overflowing the page edge
+  const sigLeftWidth = sigRightX - sigLeftX - 12;
+  const sigRightWidth = pageWidth - marginRight - sigRightX;
 
   doc.setFont("Arial", "normal");
   doc.setFontSize(12);
@@ -176,20 +183,28 @@ export async function generatePdf(
 
   doc.setFont("Arial", "bold");
   doc.setFontSize(12);
-  doc.text(profile.name.toUpperCase(), sigLeftX, sigNameY);
-  doc.text(
-    (profile.approver_name || "").toUpperCase(),
-    sigRightX,
-    sigNameY
-  );
+  doc.text(profile.name.toUpperCase(), sigLeftX, sigNameY, {
+    maxWidth: sigLeftWidth,
+  });
+  doc.text((profile.approver_name || "").toUpperCase(), sigRightX, sigNameY, {
+    maxWidth: sigRightWidth,
+  });
 
   const sigTitleY = sigNameY + 14;
   doc.setFont("Arial", "italic");
   doc.setFontSize(12);
-  doc.text(profile.position, sigLeftX, sigTitleY);
-  doc.text(profile.approver_title || "", sigRightX, sigTitleY);
+  doc.text(profile.position, sigLeftX, sigTitleY, {
+    maxWidth: sigLeftWidth,
+  });
+  doc.text(profile.approver_title || "", sigRightX, sigTitleY, {
+    maxWidth: sigRightWidth,
+  });
 
   // --- Save ---
+  // e.g. "Angeles_Individual Work From Home Accomplishment Report_November_16-30_2026.pdf"
+  const lastName = profile.name.trim().split(/\s+/).pop() || "Report";
   const safePeriod = coveredPeriodLabel.replace(/[^a-zA-Z0-9 -]/g, "").replace(/\s+/g, "_");
-  doc.save(`AWA_Report_${safePeriod}.pdf`);
+  doc.save(
+    `${lastName}_Individual Work From Home Accomplishment Report_${safePeriod}.pdf`
+  );
 }
