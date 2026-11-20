@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { FileSpreadsheet, Loader2, Calendar, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { api } from "@/lib/api";
+import { api, isUnfilled } from "@/lib/api";
+import { UnfilledWarning } from "@/components/unfilled-warning";
 import { exportToExcel } from "@/lib/export-excel";
 
 const MONTH_NAMES = [
@@ -85,6 +86,8 @@ export function ExportExcelDialog({
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [exporting, setExporting] = useState(false);
+  // Dates with blank accomplishments, shown as a warning before exporting
+  const [unfilledDates, setUnfilledDates] = useState<string[] | null>(null);
 
   const selectedRange = useMemo(() => {
     if (mode === "all") {
@@ -100,7 +103,9 @@ export function ExportExcelDialog({
     return null;
   }, [mode, selectedPreset, customStart, customEnd, presets]);
 
-  const handleExport = useCallback(async () => {
+  useEffect(() => setUnfilledDates(null), [selectedRange, mode, open]);
+
+  const handleExport = useCallback(async (skipUnfilledCheck = false) => {
     if (!selectedRange) return;
 
     setExporting(true);
@@ -116,6 +121,13 @@ export function ExportExcelDialog({
         return;
       }
 
+      const unfilled = entries.filter(isUnfilled).map((e) => e.date);
+      if (!skipUnfilledCheck && unfilled.length > 0) {
+        setUnfilledDates(unfilled);
+        return;
+      }
+
+      setUnfilledDates(null);
       exportToExcel(entries, selectedRange.start, selectedRange.end);
       toast.success("Excel file exported successfully!");
       onOpenChange(false);
@@ -225,18 +237,27 @@ export function ExportExcelDialog({
             </div>
           )}
 
-          <Button
-            onClick={handleExport}
-            disabled={!isReady || exporting}
-            className="w-full"
-          >
-            {exporting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <FileSpreadsheet className="size-4" />
-            )}
-            {exporting ? "Exporting..." : "Export Excel"}
-          </Button>
+          {unfilledDates ? (
+            <UnfilledWarning
+              dates={unfilledDates}
+              confirmLabel="Export anyway"
+              onBack={() => setUnfilledDates(null)}
+              onConfirm={() => handleExport(true)}
+            />
+          ) : (
+            <Button
+              onClick={() => handleExport()}
+              disabled={!isReady || exporting}
+              className="w-full"
+            >
+              {exporting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="size-4" />
+              )}
+              {exporting ? "Exporting..." : "Export Excel"}
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>
