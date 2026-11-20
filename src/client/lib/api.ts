@@ -9,7 +9,7 @@ export interface Entry {
   date: string;
   accomplishments: string;
   duration_days: number;
-  status: "draft" | "finalized";
+  status: "planned" | "draft" | "finalized";
   ai_generated: 0 | 1;
   created_at: string;
   updated_at: string;
@@ -54,6 +54,8 @@ interface AppData {
 
   };
   entries: Entry[];
+  /** Leave days (YYYY-MM-DD). Kept apart from entries so exports never see them. */
+  leave_dates: string[];
   context_documents: Array<{
     id: string;
     title: string;
@@ -78,6 +80,7 @@ function createEmptyData(): AppData {
       erp_username: "",
     },
     entries: [],
+    leave_dates: [],
     context_documents: [],
   };
 }
@@ -88,6 +91,7 @@ function readData(): AppData {
     if (!raw) return createEmptyData();
     const parsed = JSON.parse(raw);
     if (!parsed || parsed.version !== 1) return createEmptyData();
+    parsed.leave_dates ??= []; // data saved before leave planning existed
     return parsed as AppData;
   } catch {
     return createEmptyData();
@@ -115,6 +119,16 @@ function filterEntries(entries: Entry[], params?: EntriesParams): Entry[] {
     result = result.filter((e) => e.date <= params.end!);
   }
   return result.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** An entry still waiting for its accomplishments. */
+export function isUnfilled(entry: Entry): boolean {
+  return entry.accomplishments.trim() === "";
+}
+
+/** A planned day becomes a draft once its accomplishments are written. */
+export function statusAfterSave(status: Entry["status"], accomplishments: string): Entry["status"] {
+  return status === "planned" && accomplishments.trim() !== "" ? "draft" : status;
 }
 
 export const api = {
@@ -199,7 +213,7 @@ export const api = {
       const existing = data.entries.find((e) => e.date === item.date);
       if (existing) {
         existing.work_assignment = item.work_assignment;
-        existing.status = "draft";
+        existing.status = existing.status === "planned" && isUnfilled(existing) ? "planned" : "draft";
         existing.updated_at = now;
         updated++;
       } else {
@@ -221,6 +235,19 @@ export const api = {
 
     writeData(data);
     return { created, updated };
+  },
+
+  // Leave
+  getLeaveDates: (): string[] => [...readData().leave_dates].sort(),
+  addLeaveDate: (date: string): void => {
+    const data = readData();
+    if (!data.leave_dates.includes(date)) data.leave_dates.push(date);
+    writeData(data);
+  },
+  removeLeaveDate: (date: string): void => {
+    const data = readData();
+    data.leave_dates = data.leave_dates.filter((d) => d !== date);
+    writeData(data);
   },
 
   // Profile
