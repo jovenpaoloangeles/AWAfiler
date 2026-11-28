@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { FileDown, Loader2, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { api } from "@/lib/api";
+import { api, getExportWarnings } from "@/lib/api";
+import { UnfilledWarning } from "@/components/unfilled-warning";
 import { generatePdf } from "@/lib/generate-pdf";
 
 const MONTH_NAMES = [
@@ -103,6 +104,8 @@ export function GeneratePdfDialog({
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [generating, setGenerating] = useState(false);
+  // Dates with blank accomplishments, shown as a warning before generating
+  const [unfilledDates, setUnfilledDates] = useState<ReturnType<typeof getExportWarnings>>(null);
 
   const selectedRange = useMemo(() => {
     if (mode === "preset") {
@@ -119,7 +122,9 @@ export function GeneratePdfDialog({
     return null;
   }, [mode, selectedPreset, customStart, customEnd, presets]);
 
-  const handleGenerate = useCallback(async () => {
+  useEffect(() => setUnfilledDates(null), [selectedRange, open]);
+
+  const handleGenerate = useCallback(async (skipUnfilledCheck = false) => {
     if (!selectedRange) return;
 
     setGenerating(true);
@@ -134,6 +139,13 @@ export function GeneratePdfDialog({
         return;
       }
 
+      const warnings = getExportWarnings(entries);
+      if (!skipUnfilledCheck && warnings) {
+        setUnfilledDates(warnings);
+        return;
+      }
+
+      setUnfilledDates(null);
       await generatePdf(entries, profile, selectedRange.label);
       toast.success("PDF generated successfully!");
       onOpenChange(false);
@@ -229,18 +241,27 @@ export function GeneratePdfDialog({
             </div>
           )}
 
-          <Button
-            onClick={handleGenerate}
-            disabled={!selectedRange || generating}
-            className="w-full"
-          >
-            {generating ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <FileDown className="size-4" />
-            )}
-            {generating ? "Generating..." : "Generate PDF"}
-          </Button>
+          {unfilledDates ? (
+            <UnfilledWarning
+              warnings={unfilledDates}
+              confirmLabel="Generate anyway"
+              onBack={() => setUnfilledDates(null)}
+              onConfirm={() => handleGenerate(true)}
+            />
+          ) : (
+            <Button
+              onClick={() => handleGenerate()}
+              disabled={!selectedRange || generating}
+              className="w-full"
+            >
+              {generating ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileDown className="size-4" />
+              )}
+              {generating ? "Generating..." : "Generate PDF"}
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>

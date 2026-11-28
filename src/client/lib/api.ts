@@ -9,7 +9,7 @@ export interface Entry {
   date: string;
   accomplishments: string;
   duration_days: number;
-  status: "draft" | "finalized";
+  status: "planned" | "draft" | "finalized";
   ai_generated: 0 | 1;
   created_at: string;
   updated_at: string;
@@ -54,6 +54,10 @@ interface AppData {
 
   };
   entries: Entry[];
+  /** Leave days (YYYY-MM-DD). Kept apart from entries so exports never see them. */
+  leave_dates: string[];
+  /** Holidays (YYYY-MM-DD → name). Seeded with PH_HOLIDAYS; user can add/remove. */
+  holidays: Record<string, string>;
   context_documents: Array<{
     id: string;
     title: string;
@@ -62,6 +66,50 @@ interface AppData {
     created_at: string;
   }>;
 }
+
+// ponytail: hardcoded; add the next year's list when Malacañang publishes it.
+/** Official PH holidays: Proc. 1006 s.2025 (+1189, 1264 for Eid) and Proc. 1427 s.2026. */
+export const PH_HOLIDAYS: Record<string, string> = {
+  "2026-01-01": "New Year's Day",
+  "2026-02-17": "Chinese New Year",
+  "2026-03-20": "Eid'l Fitr",
+  "2026-04-02": "Maundy Thursday",
+  "2026-04-03": "Good Friday",
+  "2026-04-04": "Black Saturday",
+  "2026-04-09": "Araw ng Kagitingan",
+  "2026-05-01": "Labor Day",
+  "2026-05-27": "Eid'l Adha",
+  "2026-06-12": "Independence Day",
+  "2026-08-21": "Ninoy Aquino Day",
+  "2026-08-31": "National Heroes Day",
+  "2026-11-01": "All Saints' Day",
+  "2026-11-02": "All Souls' Day",
+  "2026-11-30": "Bonifacio Day",
+  "2026-12-08": "Immaculate Conception",
+  "2026-12-24": "Christmas Eve",
+  "2026-12-25": "Christmas Day",
+  "2026-12-30": "Rizal Day",
+  "2026-12-31": "Last Day of the Year",
+  // 2027 Eid dates not yet proclaimed — add via the calendar menu.
+  "2027-01-01": "New Year's Day",
+  "2027-02-06": "Chinese New Year",
+  "2027-03-25": "Maundy Thursday",
+  "2027-03-26": "Good Friday",
+  "2027-03-27": "Black Saturday",
+  "2027-04-09": "Araw ng Kagitingan",
+  "2027-05-01": "Labor Day",
+  "2027-06-12": "Independence Day",
+  "2027-08-21": "Ninoy Aquino Day",
+  "2027-08-30": "National Heroes Day",
+  "2027-11-01": "All Saints' Day",
+  "2027-11-02": "All Souls' Day",
+  "2027-11-30": "Bonifacio Day",
+  "2027-12-08": "Immaculate Conception",
+  "2027-12-24": "Christmas Eve",
+  "2027-12-25": "Christmas Day",
+  "2027-12-30": "Rizal Day",
+  "2027-12-31": "Last Day of the Year",
+};
 
 const STORAGE_KEY = "awafiler-data";
 
@@ -78,6 +126,8 @@ function createEmptyData(): AppData {
       erp_username: "",
     },
     entries: [],
+    leave_dates: [],
+    holidays: { ...PH_HOLIDAYS },
     context_documents: [],
   };
 }
@@ -88,6 +138,8 @@ function readData(): AppData {
     if (!raw) return createEmptyData();
     const parsed = JSON.parse(raw);
     if (!parsed || parsed.version !== 1) return createEmptyData();
+    parsed.leave_dates ??= []; // data saved before leave planning existed
+    parsed.holidays ??= { ...PH_HOLIDAYS }; // data saved before holidays existed
     return parsed as AppData;
   } catch {
     return createEmptyData();
@@ -116,6 +168,41 @@ function filterEntries(entries: Entry[], params?: EntriesParams): Entry[] {
   }
   return result.sort((a, b) => b.date.localeCompare(a.date));
 }
+
+/** An entry still waiting for its accomplishments. */
+export function isUnfilled(entry: Entry): boolean {
+  return entry.accomplishments.trim() === "";
+}
+
+/** Dates an export should warn about: entries with no accomplishments, and entries on holidays. */
+export function getExportWarnings(entries: Entry[]): { unfilled: string[]; holidays: string[] } | null {
+  const holidays = readData().holidays;
+  const unfilled = entries.filter(isUnfilled).map((e) => e.date);
+  const onHoliday = [...new Set(entries.filter((e) => holidays[e.date]).map((e) => e.date))];
+  return unfilled.length || onHoliday.length ? { unfilled, holidays: onHoliday } : null;
+}
+
+/** A planned day becomes a draft once its accomplishments are written. */
+export function statusAfterSave(status: Entry["status"], accomplishments: string): Entry["status"] {
+  return status === "planned" && accomplishments.trim() !== "" ? "draft" : status;
+}
+
+/** Status badge click: planned → draft, then draft ↔ finalized. */
+export function nextStatus(status: Entry["status"]): Entry["status"] {
+  return status === "draft" ? "finalized" : "draft";
+}
+
+export const STATUS_LABEL: Record<Entry["status"], string> = {
+  planned: "Planned",
+  draft: "Draft",
+  finalized: "Finalized",
+};
+
+export const STATUS_BADGE_VARIANT: Record<Entry["status"], "outline" | "secondary" | "default"> = {
+  planned: "outline",
+  draft: "secondary",
+  finalized: "default",
+};
 
 export const api = {
   // Entries
@@ -199,7 +286,7 @@ export const api = {
       const existing = data.entries.find((e) => e.date === item.date);
       if (existing) {
         existing.work_assignment = item.work_assignment;
-        existing.status = "draft";
+        existing.status = existing.status === "planned" && isUnfilled(existing) ? "planned" : "draft";
         existing.updated_at = now;
         updated++;
       } else {
@@ -221,6 +308,32 @@ export const api = {
 
     writeData(data);
     return { created, updated };
+  },
+
+  // Leave
+  getLeaveDates: (): string[] => [...readData().leave_dates].sort(),
+  addLeaveDate: (date: string): void => {
+    const data = readData();
+    if (!data.leave_dates.includes(date)) data.leave_dates.push(date);
+    writeData(data);
+  },
+  removeLeaveDate: (date: string): void => {
+    const data = readData();
+    data.leave_dates = data.leave_dates.filter((d) => d !== date);
+    writeData(data);
+  },
+
+  // Holidays
+  getHolidays: (): Record<string, string> => readData().holidays,
+  addHoliday: (date: string, name = "Holiday"): void => {
+    const data = readData();
+    data.holidays[date] = name;
+    writeData(data);
+  },
+  removeHoliday: (date: string): void => {
+    const data = readData();
+    delete data.holidays[date];
+    writeData(data);
   },
 
   // Profile

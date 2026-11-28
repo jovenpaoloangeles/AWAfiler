@@ -14,7 +14,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useEntryMutations } from "@/hooks/use-entries";
-import type { Entry } from "@/lib/api";
+import {
+  STATUS_BADGE_VARIANT,
+  STATUS_LABEL,
+  nextStatus,
+  statusAfterSave,
+  type Entry,
+} from "@/lib/api";
 import { AIAssistButton } from "@/components/ai-assist-button";
 import { AIGenerateContextButton } from "@/components/ai-generate-context-button";
 
@@ -62,7 +68,7 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
         work_assignment: workAssignment,
         accomplishments,
         duration_days: 1,
-        status,
+        status: statusAfterSave(status, accomplishments),
       };
       if (entry) {
         await updateEntry(entry.id, data);
@@ -82,7 +88,7 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
   };
 
   const toggleStatus = () => {
-    setStatus((prev) => (prev === "draft" ? "finalized" : "draft"));
+    setStatus(nextStatus);
   };
 
   return (
@@ -158,11 +164,11 @@ export function EntryForm({ open, onClose, entry, defaultDate }: EntryFormProps)
           <div className="space-y-1.5">
             <Label>Status</Label>
             <Badge
-              variant={status === "draft" ? "secondary" : "default"}
+              variant={STATUS_BADGE_VARIANT[status]}
               className="cursor-pointer select-none"
               onClick={toggleStatus}
             >
-              {status === "draft" ? "Draft" : "Finalized"}
+              {STATUS_LABEL[status]}
             </Badge>
           </div>
         </form>
