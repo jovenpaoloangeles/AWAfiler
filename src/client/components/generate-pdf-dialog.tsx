@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { api, isUnfilled } from "@/lib/api";
+import { api, getExportWarnings } from "@/lib/api";
 import { UnfilledWarning } from "@/components/unfilled-warning";
 import { generatePdf } from "@/lib/generate-pdf";
 
@@ -105,7 +105,7 @@ export function GeneratePdfDialog({
   const [customEnd, setCustomEnd] = useState("");
   const [generating, setGenerating] = useState(false);
   // Dates with blank accomplishments, shown as a warning before generating
-  const [unfilledDates, setUnfilledDates] = useState<string[] | null>(null);
+  const [unfilledDates, setUnfilledDates] = useState<ReturnType<typeof getExportWarnings>>(null);
 
   const selectedRange = useMemo(() => {
     if (mode === "preset") {
@@ -139,9 +139,9 @@ export function GeneratePdfDialog({
         return;
       }
 
-      const unfilled = entries.filter(isUnfilled).map((e) => e.date);
-      if (!skipUnfilledCheck && unfilled.length > 0) {
-        setUnfilledDates(unfilled);
+      const warnings = getExportWarnings(entries);
+      if (!skipUnfilledCheck && warnings) {
+        setUnfilledDates(warnings);
         return;
       }
 
@@ -243,7 +243,7 @@ export function GeneratePdfDialog({
 
           {unfilledDates ? (
             <UnfilledWarning
-              dates={unfilledDates}
+              warnings={unfilledDates}
               confirmLabel="Generate anyway"
               onBack={() => setUnfilledDates(null)}
               onConfirm={() => handleGenerate(true)}

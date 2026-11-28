@@ -78,6 +78,8 @@ function getDayBorderClass(border: DayBorder): string {
 const LEAVE_CELL_CLASS =
   "border-l-2 border-l-purple-500 bg-[repeating-linear-gradient(135deg,var(--color-purple-50)_0_6px,var(--color-purple-100)_6px_12px)] dark:bg-[repeating-linear-gradient(135deg,transparent_0_6px,color-mix(in_oklab,var(--color-purple-900)_30%,transparent)_6px_12px)]";
 
+const HOLIDAY_CELL_CLASS = "border-l-2 border-l-rose-500 bg-rose-50/60 dark:bg-rose-900/15";
+
 const CHIP_CLASS: Record<Entry["status"], string> = {
   planned:
     "border border-dashed border-amber-500 bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
@@ -188,6 +190,27 @@ export function CalendarView() {
       toast.success(`Leave removed on ${shortDate(dateStr)}`);
     },
     [reloadLeave]
+  );
+
+  const [holidays, setHolidays] = useState(() => api.getHolidays());
+  const reloadHolidays = useCallback(() => setHolidays(api.getHolidays()), []);
+
+  const markHoliday = useCallback(
+    (dateStr: string) => {
+      api.addHoliday(dateStr);
+      reloadHolidays();
+      toast.success(`Holiday marked on ${shortDate(dateStr)}`);
+    },
+    [reloadHolidays]
+  );
+
+  const removeHoliday = useCallback(
+    (dateStr: string) => {
+      api.removeHoliday(dateStr);
+      reloadHolidays();
+      toast.success(`Holiday removed on ${shortDate(dateStr)}`);
+    },
+    [reloadHolidays]
   );
 
   const leaveToPlanned = useCallback(
@@ -315,6 +338,10 @@ export function CalendarView() {
                 <span className="inline-block h-3 w-1 rounded-full bg-purple-500" />
                 Leave
               </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block h-3 w-1 rounded-full bg-rose-500" />
+                Holiday
+              </div>
             </div>
             
             {ERP_ENABLED && (
@@ -358,11 +385,12 @@ export function CalendarView() {
                   {calendarCells.map((cell, idx) => {
                     const dayEntries = entriesByDate.get(cell.dateStr) || [];
                     const isLeave = leaveDates.has(cell.dateStr);
+                    const holiday = holidays[cell.dateStr];
                     const isTodayCell = isToday(cell.dateStr);
                     const cellClass = `
                           group relative flex min-h-[100px] flex-col border-b border-r border-border p-1
                           ${!cell.isCurrentMonth ? "bg-muted/30" : ""}
-                          ${isLeave ? LEAVE_CELL_CLASS : getDayBorderClass(getDayBorder(dayEntries))}
+                          ${isLeave ? LEAVE_CELL_CLASS : holiday ? HOLIDAY_CELL_CLASS : getDayBorderClass(getDayBorder(dayEntries))}
                           cursor-pointer text-left transition-colors hover:bg-muted/50
                         `;
 
@@ -380,6 +408,14 @@ export function CalendarView() {
 
                         {/* Entry summaries */}
                         <div className="mt-0.5 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+                          {holiday && (
+                            <div
+                              title={holiday}
+                              className="truncate rounded bg-rose-100 px-1 py-0.5 text-[11px] leading-tight text-rose-800 dark:bg-rose-900/30 dark:text-rose-300"
+                            >
+                              {holiday}
+                            </div>
+                          )}
                           {isLeave && (
                             <div className="truncate rounded bg-purple-100 px-1 py-0.5 text-[11px] leading-tight text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
                               Leave
@@ -448,6 +484,12 @@ export function CalendarView() {
                           {inner}
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-44">
+                          {holiday && (
+                            <DropdownMenuItem onClick={() => removeHoliday(cell.dateStr)}>
+                              <Swatch className="bg-rose-500" />
+                              Remove holiday
+                            </DropdownMenuItem>
+                          )}
                           {isLeave ? (
                             <>
                               <DropdownMenuItem onClick={() => removeLeave(cell.dateStr)}>
@@ -469,6 +511,12 @@ export function CalendarView() {
                                 <Swatch className="bg-purple-500" />
                                 Mark leave
                               </DropdownMenuItem>
+                              {!holiday && (
+                                <DropdownMenuItem onClick={() => markHoliday(cell.dateStr)}>
+                                  <Swatch className="bg-rose-500" />
+                                  Mark holiday
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => openNewEntry(cell.dateStr)}>
                                 <Swatch className="bg-blue-500" />
                                 New entry…

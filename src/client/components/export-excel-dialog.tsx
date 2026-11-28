@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { api, isUnfilled } from "@/lib/api";
+import { api, getExportWarnings } from "@/lib/api";
 import { UnfilledWarning } from "@/components/unfilled-warning";
 import { exportToExcel } from "@/lib/export-excel";
 
@@ -87,7 +87,7 @@ export function ExportExcelDialog({
   const [customEnd, setCustomEnd] = useState("");
   const [exporting, setExporting] = useState(false);
   // Dates with blank accomplishments, shown as a warning before exporting
-  const [unfilledDates, setUnfilledDates] = useState<string[] | null>(null);
+  const [unfilledDates, setUnfilledDates] = useState<ReturnType<typeof getExportWarnings>>(null);
 
   const selectedRange = useMemo(() => {
     if (mode === "all") {
@@ -121,9 +121,9 @@ export function ExportExcelDialog({
         return;
       }
 
-      const unfilled = entries.filter(isUnfilled).map((e) => e.date);
-      if (!skipUnfilledCheck && unfilled.length > 0) {
-        setUnfilledDates(unfilled);
+      const warnings = getExportWarnings(entries);
+      if (!skipUnfilledCheck && warnings) {
+        setUnfilledDates(warnings);
         return;
       }
 
@@ -239,7 +239,7 @@ export function ExportExcelDialog({
 
           {unfilledDates ? (
             <UnfilledWarning
-              dates={unfilledDates}
+              warnings={unfilledDates}
               confirmLabel="Export anyway"
               onBack={() => setUnfilledDates(null)}
               onConfirm={() => handleExport(true)}

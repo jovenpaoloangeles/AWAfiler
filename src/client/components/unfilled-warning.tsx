@@ -17,12 +17,12 @@ export function formatUnfilledDates(dates: string[]): string {
 }
 
 export function UnfilledWarning({
-  dates,
+  warnings,
   confirmLabel,
   onBack,
   onConfirm,
 }: {
-  dates: string[];
+  warnings: { unfilled: string[]; holidays: string[] };
   confirmLabel: string;
   onBack: () => void;
   onConfirm: () => void;
@@ -34,11 +34,24 @@ export function UnfilledWarning({
     >
       <div className="flex gap-2">
         <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-        <p>
-          <span className="font-medium">{formatUnfilledDates(dates)}</span>{" "}
-          {dates.length === 1 ? "has" : "have"} no accomplishments yet. They'll appear as rows with
-          only the date and duration.
-        </p>
+        <div className="space-y-1">
+          {warnings.unfilled.length > 0 && (
+            <p>
+              <span className="font-medium">{formatUnfilledDates(warnings.unfilled)}</span>{" "}
+              {warnings.unfilled.length === 1 ? "has" : "have"} no accomplishments yet. They'll
+              appear as rows with only the date and duration.
+            </p>
+          )}
+          {warnings.holidays.length > 0 && (
+            <p>
+              <span className="font-medium">{formatUnfilledDates(warnings.holidays)}</span>{" "}
+              {warnings.holidays.length === 1 ? "is a holiday" : "are holidays"} but{" "}
+              {warnings.holidays.length === 1
+                ? "has an entry. It'll be exported as a work day."
+                : "have entries. They'll be exported as work days."}
+            </p>
+          )}
+        </div>
       </div>
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" onClick={onBack}>

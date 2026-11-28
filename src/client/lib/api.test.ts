@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { api, isUnfilled, nextStatus, statusAfterSave } from "./api";
+import { api, getExportWarnings, isUnfilled, nextStatus, statusAfterSave } from "./api";
 
 // bun has no localStorage; api.ts only needs getItem/setItem.
 beforeEach(() => {
@@ -73,4 +73,26 @@ test("nextStatus: planned → draft → finalized → draft", () => {
   expect(nextStatus("planned")).toBe("draft");
   expect(nextStatus("draft")).toBe("finalized");
   expect(nextStatus("finalized")).toBe("draft");
+});
+
+describe("holidays", () => {
+  test("old data gets the PH defaults; add/remove persist", () => {
+    localStorage.setItem(
+      "awafiler-data",
+      JSON.stringify({ version: 1, profile: {}, entries: [], context_documents: [] })
+    );
+    expect(api.getHolidays()["2026-12-25"]).toBe("Christmas Day");
+    expect(api.getHolidays()["2027-08-30"]).toBe("National Heroes Day");
+    api.removeHoliday("2026-12-25");
+    api.addHoliday("2026-12-26");
+    expect(api.getHolidays()["2026-12-25"]).toBeUndefined();
+    expect(api.getHolidays()["2026-12-26"]).toBe("Holiday");
+  });
+});
+
+test("getExportWarnings flags unfilled and holiday entries", () => {
+  const a = api.createEntry({ date: "2026-12-25", status: "planned" });
+  const b = { ...a, date: "2026-12-28", accomplishments: "Did X" };
+  expect(getExportWarnings([b])).toBeNull();
+  expect(getExportWarnings([a, b])).toEqual({ unfilled: ["2026-12-25"], holidays: ["2026-12-25"] });
 });
